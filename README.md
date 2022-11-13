@@ -1,5 +1,13 @@
 # Hexlink Contracts
 
+This is the repo to hold all evm smart contracts for Hexlink, including:
+
+1. The wallet contract implementation
+2. The identity oracle implementation
+3. The Hexlink name service and deployer implementation
+
+# Commands
+
 ```shell
 # compile contracts
 npx hardhat compile
@@ -20,15 +28,5 @@ doppler run -- npx hardhat deploy --network goerli
 # Etherscan verification
 
 ```shell
-doppler run -- npx hardhat run --network ropsten scripts/sample-script.ts
-```
-
-Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_ADDRESS` in this command:
-
-```shell
 ndoppler run -- npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS $CONSTRUCTOR_PARAMS
 ```
-
-# Performance optimizations
-
-For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
