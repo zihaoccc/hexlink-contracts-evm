@@ -6,52 +6,47 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./HexlinkAccount.sol";
+import "./account/HexlinkAccount.sol";
+import "./oracle/IIdentityOracle.sol";
 
 contract Hexlink is Ownable {
     using Address for address;
 
     event SetAccount(bytes32 indexed nameHash, address indexed account);
 
-    address immutable accountBase_;
-    mapping(bytes32 => uint256) private version_;
+    address immutable accountImpl_;
+    address immutable oracle_;
+    mapping(bytes32 => address) private overrides_;
 
-    constructor() {
-        accountBase_ = Create2.deploy(0, bytes32(0), type(HexlinkAccount).creationCode);
+    constructor(address oracle) {
+        accountImpl_ = Create2.deploy(0, bytes32(0), type(HexlinkAccount).creationCode);
+        oracle_ = oracle;
     }
 
-    function deploy(bytes32 nameHash, address operator, bytes memory authProof) external onlyOwner {
-        deployImpl(nameHash, 0);
-    }
-
-    function reset(bytes32 nameHash) external onlyOwner {
-        uint256 n = version_[nameHash] + 1;
-        version_[nameHash] = n;
-        deployImpl(nameHash, n);
-    }
-
-    function addressOfName(bytes32 nameHash) external view returns(address) {
-        bytes32 salt = genSalt(nameHash, version_[nameHash]);
-        return Clones.predictDeterministicAddress(accountBase_, salt);
-    }
-
-    function accountBase() external view returns(address) {
-        return accountBase_;
-    }
-
-    function version(bytes32 nameHash) external view returns(uint256) {
-        return version_[nameHash];
-    }
-
-    function deployImpl(bytes32 nameHash, uint256 n) internal {
-        bytes32 salt = genSalt(nameHash, n);
-        address payable cloned = payable(
-            Clones.cloneDeterministic(accountBase_, salt));
-        HexlinkAccount(cloned).initOwner(address(this));
+    function deploy(bytes32 nameHash, address owner, bytes memory authProof) external onlyOwner {
+        require(IIdentityOracle(oracle_).validate(nameHash, authProof), "HEXL001");
+        address payable cloned = payable(Clones.cloneDeterministic(accountImpl_,  nameHash));
+        HexlinkAccount(cloned).initOwner(owner);
         emit SetAccount(nameHash, cloned);
     }
 
-    function genSalt(bytes32 nameHash, uint256 n) internal pure returns(bytes32) {
-        return keccak256(abi.encodePacked(nameHash, n));
+    function setAccount(bytes32 nameHash, address account, bytes memory authProof) external onlyOwner {
+        require(IIdentityOracle(oracle_).validate(nameHash, authProof), "HEXL001");
+        require(account != address(0), "HEXL002");
+        overrides_[nameHash] = account;
+        emit SetAccount(nameHash, account);
+    }
+
+    function addressOfName(bytes32 nameHash) external view returns(address) {
+        address account = overrides_[nameHash];
+        if (account == address(0)) {
+            return Clones.predictDeterministicAddress(accountImpl_, nameHash);
+        } else {
+            return account;
+        }
+    }
+
+    function accountImplementation() external view returns(address) {
+        return accountImpl_;
     }
 }
