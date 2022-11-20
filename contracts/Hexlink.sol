@@ -1,5 +1,8 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
+// Hexlink Contracts
+
 pragma solidity ^0.8.0;
+pragma experimental ABIEncoderV2;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -9,7 +12,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./account/HexlinkAccount.sol";
 import "./oracle/IIdentityOracle.sol";
 
-contract Hexlink is Ownable {
+contract Hexlink {
     using Address for address;
 
     event SetAccount(bytes32 indexed nameHash, address indexed account);
@@ -23,15 +26,23 @@ contract Hexlink is Ownable {
         oracle_ = oracle;
     }
 
-    function deploy(bytes32 nameHash, address owner, bytes memory authProof) external onlyOwner {
-        require(IIdentityOracle(oracle_).validate(nameHash, authProof), "HEXL001");
+    function deploy(
+        bytes32 nameHash,
+        address owner,
+        AuthProof memory proof
+    ) external {
+        require(IIdentityOracle(oracle_).validate(nameHash, proof), "HEXL001");
         address payable cloned = payable(Clones.cloneDeterministic(accountImpl_,  nameHash));
         HexlinkAccount(cloned).initOwner(owner);
         emit SetAccount(nameHash, cloned);
     }
 
-    function setAccount(bytes32 nameHash, address account, bytes memory authProof) external onlyOwner {
-        require(IIdentityOracle(oracle_).validate(nameHash, authProof), "HEXL001");
+    function setAccount(
+        bytes32 nameHash,
+        address account,
+        AuthProof memory proof
+    ) external {
+        require(IIdentityOracle(oracle_).validate(nameHash, proof), "HEXL001");
         require(account != address(0), "HEXL002");
         overrides_[nameHash] = account;
         emit SetAccount(nameHash, account);

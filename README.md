@@ -30,3 +30,7 @@ doppler run -- npx hardhat deploy --network goerli
 ```shell
 ndoppler run -- npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS $CONSTRUCTOR_PARAMS
 ```
+
+# Error Code Map
+
+HEXL001: 

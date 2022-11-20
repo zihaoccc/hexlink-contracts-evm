@@ -13,6 +13,15 @@ const getAdmin = async function(hre: HardhatRuntimeEnvironment) {
   return await ethers.getContractAt("Hexlink", deployment.address);
 };
 
+task("test", "get address of name")
+    .setAction(async (taskArgs, hre : HardhatRuntimeEnvironment) => {
+      const nameHash = genNameHash(hre.ethers, "dongs2011@gmail.com");
+      const admin = await hre.ethers.getContractAt("Hexlink", "0x3E4daF49356B097E73D042d565eBC1e2Bb017d42");
+      const account = await admin.addressOfName(nameHash);
+      console.log("account base address is " + account);
+      return account;
+    });
+
 task("accountBase", "Prints account base address")
     .addFlag("print", "print account base address")
     .addParam("email", "the email address to generate the address")
