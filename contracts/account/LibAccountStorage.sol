@@ -4,9 +4,9 @@
 pragma solidity ^0.8.4;
 
 struct AccountStorage {
+    bool initialized;
     address entryPoint;
     uint64 nonce;
-    bool initialized;
 }
 
 library LibAccountStorage {

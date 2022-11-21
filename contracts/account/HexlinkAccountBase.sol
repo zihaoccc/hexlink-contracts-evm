@@ -19,15 +19,17 @@ abstract contract HexlinkAccountBase is ProxyManager {
         return abi.encode(msg.sig);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external onlyAdmin {
+    function execBatch(BasicUserOp[] calldata ops) public virtual {
+        require(msg.sender == _getAdmin(), "HEXL004");
         _execBatch(ops);
     }
 
-    function exec(BasicUserOp calldata op) external onlyAdmin {
+    function exec(BasicUserOp calldata op) public virtual {
+        require(msg.sender == _getAdmin(), "HEXL004");
         _exec(op);
     }
 
-    function _execBatch(BasicUserOp[] calldata ops) internal {
+    function _execBatch(BasicUserOp[] calldata ops) internal virtual {
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
             _exec(ops[i]);

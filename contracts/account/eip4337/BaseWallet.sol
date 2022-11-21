@@ -23,13 +23,15 @@ abstract contract BaseWallet is IWallet {
      */
     function validateUserOp(UserOperation calldata userOp, bytes32 requestId, address aggregator, uint256 missingWalletFunds)
     external override virtual returns (uint256 deadline) {
-        _requireFromAdmin();
+        _requireFromEntryPoint();
         deadline = _validateSignature(userOp, requestId, aggregator);
         if (userOp.initCode.length == 0) {
             _validateAndUpdateNonce(userOp);
         }
         _payPrefund(missingWalletFunds);
     }
+
+    function _requireFromEntryPoint() internal virtual;
 
     /**
      * validate the signature is valid for this message.
@@ -66,6 +68,4 @@ abstract contract BaseWallet is IWallet {
             //ignore failure (its EntryPoint's job to verify, not wallet.)
         }
     }
-
-    function _requireFromAdmin() internal view virtual;
 }

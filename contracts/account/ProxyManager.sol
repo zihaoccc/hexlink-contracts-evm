@@ -6,20 +6,16 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
 abstract contract ProxyManager is ERC1967Upgrade {
-    modifier onlyAdmin() {
-        require(msg.sender == address(this) || msg.sender == _getAdmin(), "HEXL001");
-        _;
-    }
-
-    function getAdmin() external view returns(address) {
+    function admin() external view returns(address) {
         return _getAdmin();
     }
 
-    function getBeacon() external view returns(address) {
+    function beacon() external view returns(address) {
         return _getBeacon();
     }
 
-    function changeAdmin(address newAdmin) external onlyAdmin {
+    function changeAdmin(address newAdmin) external {
+        _requireFromSelfOrAdmin();
         _changeAdmin(newAdmin);
     }
 
@@ -27,7 +23,12 @@ abstract contract ProxyManager is ERC1967Upgrade {
         address newBeacon,
         bytes memory data,
         bool forceCall
-    ) external onlyAdmin {
+    ) external {
+        _requireFromSelfOrAdmin();
         _upgradeBeaconToAndCall(newBeacon, data, forceCall);
+    }
+
+    function _requireFromSelfOrAdmin() internal view virtual {
+        require(msg.sender == address(this) || msg.sender == _getAdmin(), "HEXL013");
     }
 }

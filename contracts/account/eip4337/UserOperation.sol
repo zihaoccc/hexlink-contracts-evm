@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /* solhint-disable no-inline-assembly */
 
@@ -39,10 +37,6 @@ struct UserOperation {
 
 library LibUserOperation {
     using Address for address;
-    using ECDSA for bytes32;
-
-    // bytes4(keccak256("isValidSignature(bytes32,bytes)")
-    bytes4 constant private MAGICVALUE = 0x1626ba7e;
 
     function pack(UserOperation calldata req) private pure returns (bytes memory ret) {
         bytes calldata sig = req.signature;
@@ -61,20 +55,5 @@ library LibUserOperation {
 
     function hash(UserOperation calldata req) public pure returns (bytes32) {
         return keccak256(pack(req));
-    }
-
-    function validateSig(UserOperation calldata req, bytes32 reqId, address signer) public view returns(bool) {
-        bytes32 reqHash = reqId.toEthSignedMessageHash();
-        if (Address.isContract(signer)) {
-            try IERC1271(signer).isValidSignature(reqHash, req.signature) returns (bytes4 returnvalue) {
-                require(returnvalue == MAGICVALUE, "HEXL009");
-            } catch Error(string memory reason) {
-                revert(reason);
-            } catch {
-                revert("HEXL006");
-            }
-        } else {
-            require(signer == reqHash.recover(req.signature), "HEXL010");
-        }
     }
 }
