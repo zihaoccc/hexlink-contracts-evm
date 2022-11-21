@@ -6,10 +6,9 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
-import "./LibAccountStorage.sol";
-import "./HexlinkAccountBase.sol";
+import "./AccountBase.sol";
 
-contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
+contract HexlinkAccountERC4337 is AccountBase, BaseWallet {
     struct AccountStorage {
         bool initialized;
         address entryPoint;
@@ -21,9 +20,6 @@ contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
 
     AccountStorage internal s;
-
-    // bytes4(keccak256("isValidSignature(bytes32,bytes)")
-    bytes4 constant private MAGICVALUE = 0x1626ba7e;
 
     modifier initializer() {
         require(s.initialized == false, "HEXL001");
@@ -37,12 +33,12 @@ contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
         _updateEntryPoint(entrypoint);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) public override virtual {
+    function execBatch(BasicUserOp[] calldata ops) external virtual {
         require(msg.sender == s.entryPoint || msg.sender == _getAdmin(), "HEXL014");
         _execBatch(ops);
     }
 
-    function exec(BasicUserOp calldata op) public override virtual {
+    function exec(BasicUserOp calldata op) external virtual {
         // In EIP4337 case, we assume user will use entrypoint to send txes in default 
         // so here we alway check entrypoint contract address first
         require(msg.sender == s.entryPoint || msg.sender == _getAdmin(), "HEXL015");
@@ -62,13 +58,13 @@ contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
         _updateEntryPoint(newEntryPoint);
     }
 
-    function _validateAndUpdateNonce(UserOperation calldata userOp) internal override virtual {
-        require(s.nonce++ == userOp.nonce, "HEXL008");
-    }
-
     function _updateEntryPoint(address newEntryPoint) internal virtual {
         s.entryPoint = newEntryPoint;
         emit SetEntryPoint(newEntryPoint);
+    }
+
+    function _validateAndUpdateNonce(UserOperation calldata userOp) internal override virtual {
+        require(s.nonce++ == userOp.nonce, "HEXL008");
     }
 
     function _validateSignature(UserOperation calldata userOp, bytes32 requestId, address)
@@ -77,7 +73,7 @@ contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
         bytes32 reqHash = requestId.toEthSignedMessageHash();
         if (Address.isContract(signer)) {
             try IERC1271(signer).isValidSignature(reqHash, userOp.signature) returns (bytes4 returnvalue) {
-                require(returnvalue == MAGICVALUE, "HEXL009");
+                require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
             } catch Error(string memory reason) {
                 revert(reason);
             } catch {
@@ -90,6 +86,6 @@ contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
     }
 
     function _requireFromEntryPoint() internal view override {
-        require(msg.sender == s.entryPoint, "HEXL010");
+        require(msg.sender == s.entryPoint, "HEXL011");
     }
 }
