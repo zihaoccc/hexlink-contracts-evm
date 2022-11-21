@@ -10,6 +10,12 @@ import "./LibAccountStorage.sol";
 import "./HexlinkAccountBase.sol";
 
 contract HexlinkAccountERC4337 is HexlinkAccountBase, BaseWallet {
+    struct AccountStorage {
+        bool initialized;
+        address entryPoint;
+        uint64 nonce;
+    }
+
     using ECDSA for bytes32;
 
     event SetEntryPoint(address indexed newEntryPoint);

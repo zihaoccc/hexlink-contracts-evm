@@ -5,6 +5,10 @@ import "./LibAccountStorage.sol";
 import "./HexlinkAccountBase.sol";
 
 contract HexlinkAccountSimple is HexlinkAccountBase {
+    struct AccountStorage {
+        bool initialized;
+    }
+
     AccountStorage internal s;
 
     modifier initializer() {
