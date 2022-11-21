@@ -19,6 +19,7 @@ contract Hexlink {
 
     address immutable accountImpl_;
     address immutable oracle_;
+    mapping(bytes32 => uint256) private versions_;
     mapping(bytes32 => address) private overrides_;
 
     constructor(address oracle) {
@@ -32,26 +33,38 @@ contract Hexlink {
         AuthProof memory proof
     ) external {
         require(IIdentityOracle(oracle_).validate(nameHash, proof), "HEXL001");
-        address payable cloned = payable(Clones.cloneDeterministic(accountImpl_,  nameHash));
-        HexlinkAccount(cloned).initOwner(owner);
+        _deploy(nameHash, owner);
         emit SetAccount(nameHash, cloned);
     }
 
-    function setAccount(
+    function _deploy(bytes32 nameHash, address owner) private {
+        bytes32 salt = keccak256(abi.encodePacked(nameHash, vesions_[nameHash]));
+        address payable cloned = payable(Clones.cloneDeterministic(accountImpl_,  salt));
+        HexlinkAccount(cloned).initOwner(owner);
+    }
+
+    function resetAccount(
         bytes32 nameHash,
-        address account,
-        AuthProof memory proof
+        address newOwner,
+        AuthProof memory proof,
+        bool redeploy
     ) external {
         require(IIdentityOracle(oracle_).validate(nameHash, proof), "HEXL001");
         require(account != address(0), "HEXL002");
-        overrides_[nameHash] = account;
+        if (redeploy) {
+            vesions_[nameHash]++;
+            _deploy(nameHash, newOwner);
+        } else {
+            overrides_[nameHash] = account;
+        }
         emit SetAccount(nameHash, account);
     }
 
     function addressOfName(bytes32 nameHash) external view returns(address) {
         address account = overrides_[nameHash];
         if (account == address(0)) {
-            return Clones.predictDeterministicAddress(accountImpl_, nameHash);
+            bytes32 salt = keccak256(abi.encodePacked(nameHash, vesions_[nameHash]));
+            return Clones.predictDeterministicAddress(accountImpl_, salt);
         } else {
             return account;
         }

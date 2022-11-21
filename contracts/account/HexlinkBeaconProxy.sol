@@ -4,10 +4,10 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import "@openzeppelin/contracts/proxy/Proxy.sol";
-import "../proxy/HexlinkBeacon.sol";
 
-contract HexlinkBeaconProxy is Proxy, HexlinkBeacon {
+contract HexlinkBeaconProxy is Proxy, ERC1967Upgrade {
     /**
      * @dev Returns the current implementation address of the associated beacon.
      */

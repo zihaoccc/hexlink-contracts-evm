@@ -3,12 +3,11 @@
 
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/utils/StorageSlot.sol";
-import "./HexlinkERC1967Upgrade.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
-abstract contract HexlinkProxyManager is HexlinkERC1967Upgrade {
+abstract contract ProxyManager is ERC1967Upgrade {
     modifier onlyAdmin() {
-        require(_getAdmin() == msg.sender, "HEXL001");
+        require(msg.sender == address(this) || msg.sender == _getAdmin(), "HEXL001");
         _;
     }
 
