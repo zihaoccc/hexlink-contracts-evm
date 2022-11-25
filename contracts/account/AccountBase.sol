@@ -31,20 +31,6 @@ abstract contract AccountBase is ERC1967Upgrade {
         return _getBeacon();
     }
 
-    function changeAdmin(address newAdmin) external {
-        _requireFromSelfOrAdmin();
-        _changeAdmin(newAdmin);
-    }
-
-    function upgradeBeaconToAndCall(
-        address newBeacon,
-        bytes memory data,
-        bool forceCall
-    ) external {
-        _requireFromSelfOrAdmin();
-        _upgradeBeaconToAndCall(newBeacon, data, forceCall);
-    }
-
     function _execBatch(BasicUserOp[] calldata ops) internal virtual {
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
@@ -59,9 +45,5 @@ abstract contract AccountBase is ERC1967Upgrade {
             bytes memory data
         ) = op.to.call{value: op.value, gas: op.callGasLimit}(op.callData);
         op.to.verifyCallResultFromTarget(success, data, "HEXL003");
-    }
-
-    function _requireFromSelfOrAdmin() internal view virtual {
-        require(msg.sender == address(this) || msg.sender == _getAdmin(), "HEXL013");
     }
 }

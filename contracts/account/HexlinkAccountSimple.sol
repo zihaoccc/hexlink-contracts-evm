@@ -10,6 +10,11 @@ contract HexlinkAccountSimple is AccountBase {
 
     AccountStorage internal s;
 
+    modifier onlyAdmin() {
+        require(msg.sender == _getAdmin(), "HEXL013");
+        _;
+    }
+
     modifier initializer() {
         require(s.initialized == false, "HEXL001");
         _;
@@ -21,13 +26,23 @@ contract HexlinkAccountSimple is AccountBase {
         _upgradeBeaconToAndCall(beacon, data, false);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external virtual {
-        require(msg.sender == _getAdmin(), "HEXL004");
+    function changeAdmin(address newAdmin) onlyAdmin external {
+        _changeAdmin(newAdmin);
+    }
+
+    function upgradeBeaconToAndCall(
+        address beacon,
+        bytes memory data,
+        bool forceCall
+    ) onlyAdmin external {
+        _upgradeBeaconToAndCall(beacon, data, forceCall);
+    }
+
+    function execBatch(BasicUserOp[] calldata ops) onlyAdmin external virtual {
         _execBatch(ops);
     }
 
-    function exec(BasicUserOp calldata op) external virtual {
-        require(msg.sender == _getAdmin(), "HEXL004");
+    function exec(BasicUserOp calldata op) onlyAdmin external virtual {
         _exec(op);
     }
 }

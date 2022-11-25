@@ -3,7 +3,6 @@ pragma solidity ^0.8.4;
 
 import "./IWallet.sol";
 import "./UserOperation.sol";
-import "../ProxyManager.sol";
 
 /* solhint-disable avoid-low-level-calls */
 /* solhint-disable no-inline-assembly */
@@ -17,21 +16,25 @@ import "../ProxyManager.sol";
 abstract contract BaseWallet is IWallet {
     using LibUserOperation for UserOperation;
 
+    modifier onlyEntryPoint() {
+        require(msg.sender == entryPoint(), "HEXL011");
+        _;
+    }
+
+    function entryPoint() public view virtual returns (address);
+
     /**
      * Validate user's signature and nonce.
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation methods.
      */
     function validateUserOp(UserOperation calldata userOp, bytes32 requestId, address aggregator, uint256 missingWalletFunds)
-    external override virtual returns (uint256 deadline) {
-        _requireFromEntryPoint();
+    external onlyEntryPoint override virtual returns (uint256 deadline) {
         deadline = _validateSignature(userOp, requestId, aggregator);
         if (userOp.initCode.length == 0) {
             _validateAndUpdateNonce(userOp);
         }
         _payPrefund(missingWalletFunds);
     }
-
-    function _requireFromEntryPoint() internal virtual;
 
     /**
      * validate the signature is valid for this message.

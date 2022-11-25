@@ -33,32 +33,39 @@ contract HexlinkAccountERC4337 is AccountBase, BaseWallet {
         _updateEntryPoint(entrypoint);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external virtual {
-        require(msg.sender == s.entryPoint || msg.sender == _getAdmin(), "HEXL014");
-        _execBatch(ops);
-    }
-
-    function exec(BasicUserOp calldata op) external virtual {
-        // In EIP4337 case, we assume user will use entrypoint to send txes in default 
-        // so here we alway check entrypoint contract address first
-        require(msg.sender == s.entryPoint || msg.sender == _getAdmin(), "HEXL015");
-        _exec(op);
-    }
-
     function nonce() public view virtual returns (uint256) {
         return s.nonce;
     }
 
-    function entryPoint() public view virtual returns (address) {
+    function entryPoint() public view override virtual returns (address) {
         return s.entryPoint;
     }
 
-    function updateEntryPoint(address newEntryPoint) external virtual {
-        _requireFromSelfOrAdmin();
+    function execBatch(BasicUserOp[] calldata ops) onlyEntryPoint external virtual {
+        _execBatch(ops);
+    }
+
+    function exec(BasicUserOp calldata op) onlyEntryPoint external virtual {
+        _exec(op);
+    }
+
+    function changeAdmin(address newAdmin) onlyEntryPoint external {
+        _changeAdmin(newAdmin);
+    }
+
+    function upgradeBeaconToAndCall(
+        address beacon,
+        bytes memory data,
+        bool forceCall
+    ) onlyEntryPoint external {
+        _upgradeBeaconToAndCall(beacon, data, forceCall);
+    }
+
+    function updateEntryPoint(address newEntryPoint) onlyEntryPoint external {
         _updateEntryPoint(newEntryPoint);
     }
 
-    function _updateEntryPoint(address newEntryPoint) internal virtual {
+    function _updateEntryPoint(address newEntryPoint) internal {
         s.entryPoint = newEntryPoint;
         emit SetEntryPoint(newEntryPoint);
     }
@@ -83,9 +90,5 @@ contract HexlinkAccountERC4337 is AccountBase, BaseWallet {
             require(signer == reqHash.recover(userOp.signature), "HEXL010");
         }
         return 0;
-    }
-
-    function _requireFromEntryPoint() internal view override {
-        require(msg.sender == s.entryPoint, "HEXL011");
     }
 }
