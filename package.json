@@ -24,5 +24,8 @@
     "solhint": "^3.3.7",
     "solidity-coverage": "^0.7.21",
     "typechain": "^5.2.0"
+  },
+  "dependencies": {
+    "@solidstate/contracts": "^0.0.48"
   }
 }

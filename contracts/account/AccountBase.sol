@@ -5,9 +5,9 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./IAccount.sol";
+import "../lib/Initializable.sol";
 
-abstract contract AccountBase is ERC1967Upgrade, IAccount {
+abstract contract AccountBase is ERC1967Upgrade, Initializable {
     struct BasicUserOp {
         address to;
         uint256 value;
