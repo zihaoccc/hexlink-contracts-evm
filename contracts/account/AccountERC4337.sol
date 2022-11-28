@@ -25,7 +25,7 @@ library ERC4337Storage {
     }
 }
 
-contract HexlinkAccountERC4337 is AccountBase, BaseWallet {
+contract AccountERC4337 is AccountBase, BaseWallet {
     using ECDSA for bytes32;
 
     event SetEntryPoint(address indexed newEntryPoint);

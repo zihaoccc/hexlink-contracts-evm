@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "./AccountBase.sol";
 
-contract HexlinkAccountSimple is AccountBase {
+contract AccountSimple is AccountBase {
     modifier onlyAdmin() {
         require(msg.sender == _getAdmin(), "HEXL013");
         _;
