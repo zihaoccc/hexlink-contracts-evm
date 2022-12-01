@@ -9,12 +9,11 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "../account/AccountProxy.sol";
 import "../lib/IInitializable.sol";
-import "../oracle/IIdentityOracle.sol";
-import "../oracle/OracleConsumer.sol";
+import "../auth/IIdentityOracle.sol";
+import "../auth/HexlinkAuthMultiStage.sol";
 
 library HexlinkStorage {
     struct Layout {
-        address oracle;
         mapping(bytes32 => address) overrides;
     }
 
@@ -29,25 +28,25 @@ library HexlinkStorage {
     }
 }
 
-contract Hexlink is SafeOwnable, OracleConsumer {
+contract Hexlink is HexlinkAuthMultiStage, SafeOwnable {
     using Address for address;
 
+    event ResetAccountAttempt(bytes32 indexed nameHash, uint256 attempt);
     event ResetAccount(bytes32 indexed nameHash, address indexed account);
-    event SetOracle(address indexed oracle);
 
     address immutable accountProxy_;
 
-    constructor(address oracle_, address owner) OracleConsumer(oracle_) {
+    constructor(address owner) {
         accountProxy_ = Create2.deploy(0, bytes32(0), type(AccountProxy).creationCode);
         OwnableStorage.layout().owner = owner;
     }
 
-    function updateOracle(address newOracle) external onlyOwner {
-        _updateOracle(newOracle);
-    }
-
     function accountProxy() external view returns (address) {
         return accountProxy_;
+    }
+
+    function setOracle(uint256 authType, address oracle) external onlyOwner {
+        _setOracle(authType, oracle);
     }
 
     function addressOfName(bytes32 nameHash) external view returns (address) {
@@ -55,55 +54,42 @@ contract Hexlink is SafeOwnable, OracleConsumer {
         return account == address(0) ? _predictAddress(nameHash) : account;
     }
 
-    function deploy(
-        bytes32 nameHash,
-        bytes memory initData,
-        bytes memory authProof
-    ) external {
-        address account = _predictAddress(nameHash);
-        require(!account.isContract(), "HEXL002");
-        if (IIdentityOracle(oracle()).validate(nameHash, authProof, 0)) {
-          _deploy(nameHash, initData);
+    function deploy(HexlinkRequest calldata request) external {
+        _validateRequest(request);
+        address account = _predictAddress(request.nameHash);
+        require(!account.isContract(), "HEXL001");
+        _deploy(request.nameHash, request.functionParams);
+    }
+
+    function redeploy(HexlinkRequest calldata request) external {
+        uint256 attempts = _validateRequestMultiStage(request).totalAuthAttempts;
+        if (attempts == 2) {
+            address account = _predictAddress(request.nameHash);
+            require(account.isContract(), "HEXL002");
+            bytes32 salt = keccak256(abi.encodePacked(request.nameHash, block.timestamp));
+            account = _deploy(salt, request.functionParams);
+            HexlinkStorage.layout().overrides[request.nameHash] = account;
+            emit ResetAccount(request.nameHash, account);
+        } else {
+            emit ResetAccountAttempt(request.nameHash, attempts);
         }
     }
 
-    function redeploy(
-        bytes32 nameHash,
-        bytes memory initData,
-        bytes memory authProof
-    ) external {
-        address account = _predictAddress(nameHash);
-        require(account.isContract(), "HEXL002");
-        if (IIdentityOracle(oracle()).validate(nameHash, authProof, 1)) {   
-            _redeploy(nameHash, initData);
-        }
-    }
-
-    function resetAccount(
-        bytes32 nameHash,
-        address account,
-        bytes memory authProof
-    ) external {
-        HexlinkStorage.Layout storage s = HexlinkStorage.layout();
-        require(account != address(0), "HEXL003");
-        if (IIdentityOracle(s.oracle).validate(nameHash, authProof, 1)) {
-            s.overrides[nameHash] = account;
-            emit ResetAccount(nameHash, account);
+    function resetAccount(HexlinkRequest calldata request) external {
+        uint256 attempts = _validateRequestMultiStage(request).totalAuthAttempts;
+        if (attempts == 2) {
+            _validateRequest(request);
+            address account = abi.decode(request.functionParams, (address));
+            require(account != address(0), "HEXL003");
+            HexlinkStorage.layout().overrides[request.nameHash] = account;
+            emit ResetAccount(request.nameHash, account);
+        } else {
+            emit ResetAccountAttempt(request.nameHash, attempts);
         }
     }
 
     function _predictAddress(bytes32 salt) private view returns (address) {
         return Clones.predictDeterministicAddress(accountProxy_, salt);
-    }
-
-    function _redeploy(
-        bytes32 nameHash,
-        bytes memory initData
-    ) internal returns (address account) {
-        bytes32 salt = keccak256(abi.encodePacked(nameHash, block.timestamp));
-        account = _deploy(salt, initData);
-        HexlinkStorage.layout().overrides[nameHash] = account;
-        emit ResetAccount(nameHash, account);
     }
 
     function _deploy(

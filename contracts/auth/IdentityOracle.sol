@@ -11,7 +11,7 @@ contract IdentityOracle is IIdentityOracle, SafeOwnable {
 
     constructor() Ownable() { }
 
-    function setValidator(
+    function registerVerifier(
         uint32 identityType,
         address validator,
         bytes memory /* signature */
@@ -21,9 +21,9 @@ contract IdentityOracle is IIdentityOracle, SafeOwnable {
     }
 
     function validate(
-        bytes32 /* nameHash */,
-        bytes memory /* authProof */,
-        uint8 /* policy */
+        bytes32 /* message */,
+        address[] memory /* verifiers */,
+        bytes memory /* signature */
     ) external pure override returns (bool) {
         return false;
     }
