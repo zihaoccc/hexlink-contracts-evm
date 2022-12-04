@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "./Hexlink.sol";
 
 contract HexlinkUpgradable is Hexlink, UUPSUpgradeable {
-    constructor(address owner) Hexlink(owner) { }
+    constructor(address accountImpl, address owner) Hexlink(accountImpl, owner) { }
 
     function _authorizeUpgrade(
         address newImplementation

@@ -1,9 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-
 import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
 import "./AccountBase.sol";
@@ -26,8 +23,6 @@ library ERC4337Storage {
 }
 
 contract AccountERC4337 is AccountBase, BaseWallet {
-    using ECDSA for bytes32;
-
     event SetEntryPoint(address indexed newEntryPoint);
 
     function _init(bytes memory initData) internal override {
@@ -80,20 +75,8 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     }
 
     function _validateSignature(UserOperation calldata userOp, bytes32 requestId, address)
-    internal override virtual returns (uint256 deadline) {
-        address signer = _getAdmin();
-        bytes32 reqHash = requestId.toEthSignedMessageHash();
-        if (Address.isContract(signer)) {
-            try IERC1271(signer).isValidSignature(reqHash, userOp.signature) returns (bytes4 returnvalue) {
-                require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
-            } catch Error(string memory reason) {
-                revert(reason);
-            } catch {
-                revert("HEXL006");
-            }
-        } else {
-            require(signer == reqHash.recover(userOp.signature), "HEXL010");
-        }
+    internal override returns (uint256) {
+        _validateSignature(requestId, userOp.signature);
         return 0;
     }
 }

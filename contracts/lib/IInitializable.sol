@@ -3,5 +3,5 @@
 pragma solidity ^0.8.4;
 
 interface IInitializable {
-    function init(bytes memory initData) external;
+    function init(bytes calldata initData) external;
 }

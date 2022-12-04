@@ -3,78 +3,43 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/Create2.sol";
-import "../account/AccountProxy.sol";
-import "../lib/IInitializable.sol";
-import "../auth/IIdentityOracle.sol";
-import "./Request.sol";
-
-library HexlinkAuthStorage {
-    struct Layout {
-        mapping(uint256 => address) oracles;
-        mapping(bytes32 => uint256) nonces;
-    }
-
-    bytes32 internal constant STORAGE_SLOT =
-        keccak256('hexlink.contracts.storage.HexlinkAuthStorage');
-
-    function layout() internal pure returns (Layout storage l) {
-        bytes32 slot = STORAGE_SLOT;
-        assembly {
-            l.slot := slot
-        }
-    }
-}
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "../interfaces/IHexlink.sol";
 
 abstract contract HexlinkAuth {
-    using Address for address;
-
-    uint256 constant AUTH_TTL = 3600; // one hour
-
-    event SetOracle(uint256 indexed authType, address indexed oracle);
-
-    function oracle(uint256 authType) public view returns (address) {
-        return HexlinkAuthStorage.layout().oracles[authType];
+    function _validateAuthProof(
+        bytes32 requestId,
+        address validator,
+        AuthProof calldata proof
+    ) internal view {
+        require(proof.requestId == requestId, "HEXL022");
+        require(proof.expiredAt > block.timestamp, "HEXL023");
+        _validateSignature(validator, proof);
     }
 
-    function nonce(bytes32 nameHash) public view returns (uint256) {
-        return HexlinkAuthStorage.layout().nonces[nameHash];
+    function _validateSignature(address validator, AuthProof calldata proof) private view {
+        bytes32 message = keccak256(abi.encode(_pack(proof)));
+        try IERC1271(validator).isValidSignature(message, proof.signature) returns (bytes4 returnvalue) {
+            require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
+        } catch Error(string memory reason) {
+            revert(reason);
+        } catch {
+            revert("HEXL006");
+        }
     }
 
-    function _setOracle(uint256 authType, address newOracle) internal {
-        HexlinkAuthStorage.layout().oracles[authType] = newOracle;
-        emit SetOracle(authType, newOracle);
-    }
-
-    function _validateRequest(HexlinkRequest memory request) internal {
-        HexlinkAuthStorage.Layout storage s = HexlinkAuthStorage.layout();
-        require(s.nonces[request.nameHash]++ == request.nonce, "HEXL020");
-        require(request.functionToCall == msg.sig, "HEXL021");
-        require(
-            request.verifiedAt < block.timestamp &&
-                request.verifiedAt > block.timestamp - AUTH_TTL,
-            "HEXL021"
-        );
-        _validateSignature(s.oracles[request.authType], request);
-    }
-
-    function _validateSignature(address oracle_, HexlinkRequest memory request) view internal {
-        RequestToSign memory requestToSign = RequestToSign({
-            nameHash: request.nameHash,
-            functionToCall: request.functionToCall,
-            functionParamsHash: keccak256(request.functionParams),
-            nonce: request.nonce,
-            verifiedAt: request.verifiedAt,
-            authType: request.authType,
-            oracle: oracle_,
-            chainId: block.chainid
-        });
-        bytes32 message = keccak256(abi.encode(requestToSign));
-        require(
-            IIdentityOracle(oracle_).validate(message, request.verifiers, request.signature),
-            "HEXL021"
-        );
+    function _pack(AuthProof calldata proof) private pure returns (bytes memory ret) {
+        bytes calldata sig = proof.signature;
+        // copy directly the proof from calldata up to (but not including) the signature.
+        // this encoding depends on the ABI encoding of calldata, but is much lighter to copy
+        // than referencing each field separately.
+        assembly {
+            let ofs := proof
+            let len := sub(sub(sig.offset, ofs), 32)
+            ret := mload(0x40)
+            mstore(0x40, add(ret, add(len, 32)))
+            mstore(ret, len)
+            calldatacopy(add(ret, 32), ofs, len)
+        }
     }
 }

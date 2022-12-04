@@ -29,9 +29,9 @@ abstract contract Initializable is IInitializable {
         s.initialized = true;
     }
 
-    function init(bytes memory initData) external initializer {
+    function init(bytes calldata initData) external initializer {
         _init(initData);
     }
 
-    function _init(bytes memory initData) internal virtual;
+    function _init(bytes calldata initData) internal virtual;
 }

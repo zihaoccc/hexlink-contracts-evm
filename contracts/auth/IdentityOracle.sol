@@ -4,9 +4,9 @@
 pragma solidity ^0.8.0;
 
 import "@solidstate/contracts/access/ownable/SafeOwnable.sol";
-import "./IIdentityOracle.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-contract IdentityOracle is IIdentityOracle, SafeOwnable {
+contract IdentityOracle is IERC1271, SafeOwnable {
     mapping(uint32 => address) validators_;
 
     constructor() Ownable() { }
@@ -20,11 +20,10 @@ contract IdentityOracle is IIdentityOracle, SafeOwnable {
         validators_[identityType] = validator;
     }
 
-    function validate(
+    function isValidSignature(
         bytes32 /* message */,
-        address[] memory /* verifiers */,
         bytes memory /* signature */
-    ) external pure override returns (bool) {
-        return false;
+    ) external pure override returns(bytes4) {
+        revert("Not Implemented");
     }
 }
