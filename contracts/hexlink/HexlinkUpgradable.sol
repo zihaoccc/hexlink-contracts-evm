@@ -18,10 +18,7 @@ contract HexlinkUpgradable is Hexlink, Initializable, UUPSUpgradeable {
             address[] memory oracles
         ) = abi.decode(data, (address, uint256[], address[]));
         OwnableStorage.layout().owner = owner;
-        require(authTypes.length == oracles.length, "HEXL001");
-        for (uint256 i = 0; i < authTypes.length; i++) {
-            _setOracle(authTypes[i], oracles[i]);
-        }
+        _setOracles(authTypes, oracles);
     }
 
     function _authorizeUpgrade(

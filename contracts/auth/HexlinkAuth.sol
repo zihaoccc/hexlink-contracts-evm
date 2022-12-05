@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "../interfaces/IHexlink.sol";
+import "../utils/Auth.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;
@@ -48,10 +48,13 @@ abstract contract HexlinkAuth {
         return HexlinkAuthStorage.layout().oracles[authType];
     }
 
-    function _setOracle(uint256 authType, address newOracle) internal {
-        require(authType != 0 && newOracle != address(0), "HEXL033");
-        HexlinkAuthStorage.layout().oracles[authType] = newOracle;
-        emit SetOracle(authType, newOracle);
+    function _setOracles(uint256[] memory authTypes, address[] memory oracles) internal {
+        require(authTypes.length == oracles.length, "HEXL001");
+        for (uint256 i = 0; i < authTypes.length; i++) {
+            require(authTypes[i] != 0 && oracles[i] != address(0), "HEXL033");
+            HexlinkAuthStorage.layout().oracles[authTypes[i]] = oracles[i];
+            emit SetOracle(authTypes[i], oracles[i]);
+        }
     }
 
     function authConfig(uint256 /* authType */) public pure returns (AuthConfig memory) {

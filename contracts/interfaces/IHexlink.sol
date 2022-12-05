@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "../utils/Auth.sol";
 
 struct Request {
     bytes32 name; // user id
@@ -12,18 +13,9 @@ struct Request {
     uint96 nonce; // nonce to sign
 }
 
-/*
- * The request id is a hash over the request, contract processing
- * the request and chainId. The signature is signed over keccak256
- * hash of AuthProofToSign struct
- */
-struct AuthProof{
-    uint256 issuedAt; // set by oracle verifiers
-    uint256 authType; // set by oracle verifiers
-    bytes signature; // aggregated signature
-}
-
 interface IHexlink {
+    function accountBase() external view returns (address);
+
     function addressOfName(bytes32 name) external view returns (address);
 
     function deploy(

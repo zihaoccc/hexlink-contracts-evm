@@ -35,12 +35,19 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         accountBase_ = _accountBase;
     }
 
-    function setOracle(uint256 authType, address oracle) external onlyOwner {
-        _setOracle(authType, oracle);
+    function setOracles(
+        uint256[] memory authTypes,
+        address[] memory oracles
+    ) external onlyOwner {
+        _setOracles(authTypes, oracles);
     }
 
     function nonce(bytes32 name) external override view returns (uint96) {
         return s.states[name].nonce;
+    }
+
+    function accountBase() external override view returns (address) {
+        return accountBase_;
     }
 
     function addressOfName(bytes32 name) public view returns (address) {
@@ -48,7 +55,7 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
     }
 
     function deploy(Request calldata request, AuthProof calldata proof) external {
-        RequestInfo memory info = _validateRequest(request);
+        RequestInfo memory info = _buildRequestInfo(request);
         _validate(info, proof);
         address account = Clones.cloneDeterministic(accountBase_, request.name);
         IInitializable(account).init(request.params);
@@ -59,7 +66,7 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         Request calldata request,
         AuthProof[] calldata proofs
     ) external {
-        RequestInfo memory info = _validateRequest(request);
+        RequestInfo memory info = _buildRequestInfo(request);
         if (proofs.length == 2) {
             _validate2Fac(info, proofs[0], proofs[1]);
         } else { // if not 2-fac, only consume first auth proof
@@ -78,14 +85,14 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         s.states[request.name].nonce = info.nonce + 1;
     }
 
-    // this will invalidate all pending requests
+    // this will invalidate pending 2-stage request
     function bumpNonce(Request calldata request, AuthProof calldata proof) public {
-        RequestInfo memory info = _validateRequest(request);
+        RequestInfo memory info = _buildRequestInfo(request);
         _validate(info, proof);
         s.states[request.name].nonce = info.nonce + 1;
     }
 
-    function _validateRequest(
+    function _buildRequestInfo(
         Request calldata request
     ) internal view returns (RequestInfo memory) {
         AccountState memory state = s.states[request.name];
