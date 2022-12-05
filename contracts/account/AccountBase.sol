@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./Initializable.sol";
+import "../utils/Initializable.sol";
 import "../interfaces/IAccount.sol";
 
 abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {

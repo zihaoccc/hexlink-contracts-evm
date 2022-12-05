@@ -28,21 +28,11 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
 
     event Reset(bytes32 indexed name, address indexed account);
 
-    address immutable accountImpl_;
+    address immutable accountBase_;
     AppStorage internal s;
 
-    constructor(
-        address _accountImpl,
-        address _owner,
-        uint256[] memory authTypes,
-        address[] memory oracles
-    ) {
-        accountImpl_ = _accountImpl;
-        OwnableStorage.layout().owner = _owner;
-        require(authTypes.length == oracles.length, "HEXL001");
-        for (uint256 i = 0; i < authTypes.length; i++) {
-            _setOracle(authTypes[i], oracles[i]);
-        }
+    constructor(address _accountBase) {
+        accountBase_ = _accountBase;
     }
 
     function setOracle(uint256 authType, address oracle) external onlyOwner {
@@ -57,17 +47,10 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         return _addressOfName(name, s.states[name].account);
     }
 
-    // this will invalidate all pending requests
-    function bumpNonce(Request calldata request, AuthProof calldata proof) public {
-        RequestInfo memory info = _validateRequest(request);
-        _validate(info, proof);
-        s.states[request.name].nonce = info.nonce + 1;
-    }
-
     function deploy(Request calldata request, AuthProof calldata proof) external {
         RequestInfo memory info = _validateRequest(request);
         _validate(info, proof);
-        address account = Clones.cloneDeterministic(accountImpl_, request.name);
+        address account = Clones.cloneDeterministic(accountBase_, request.name);
         IInitializable(account).init(request.params);
         s.states[request.name].nonce = info.nonce + 1;
     }
@@ -79,20 +62,26 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         RequestInfo memory info = _validateRequest(request);
         if (proofs.length == 2) {
             _validate2Fac(info, proofs[0], proofs[1]);
-        } else {
+        } else { // if not 2-fac, only consume first auth proof
             address defaultAccount = _defaultAccount(request.name);
             // account already deployed or reset, so require 2-stage auth
             if (info.account != defaultAccount || defaultAccount.isContract()) {
-                require(proofs.length == 1, "HEXL004");
                 uint256 stage = _validate2Stage(info, proofs[0]);
                 if (stage == 1) {
                     return; // pending confirm, not doing anything
                 }
-            } else {
+            } else { // bootstrap
                 _validate(info, proofs[0]);
             }
         }
         _reset(request.name, request.params);
+        s.states[request.name].nonce = info.nonce + 1;
+    }
+
+    // this will invalidate all pending requests
+    function bumpNonce(Request calldata request, AuthProof calldata proof) public {
+        RequestInfo memory info = _validateRequest(request);
+        _validate(info, proof);
         s.states[request.name].nonce = info.nonce + 1;
     }
 
@@ -103,7 +92,7 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         require(request.func == msg.sig, "HEXL021");
         require(state.nonce == request.nonce, "HEXL020");
         return RequestInfo(
-            _requestId(request),
+            keccak256(abi.encode(request, address(this), block.chainid)),
             _addressOfName(request.name, state.account),
             state.nonce
         );
@@ -117,11 +106,7 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
     }
 
     function _defaultAccount(bytes32 name) private view returns(address) {
-        return Clones.predictDeterministicAddress(accountImpl_, name);
-    }
-
-    function _requestId(Request calldata request) private view returns(bytes32) {
-        return keccak256(abi.encode(request, address(this), block.chainid));
+        return Clones.predictDeterministicAddress(accountBase_, name);
     }
 
     function _addressOfName(

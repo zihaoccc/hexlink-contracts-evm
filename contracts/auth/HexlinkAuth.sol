@@ -26,7 +26,7 @@ library HexlinkAuthStorage {
     }
 
     bytes32 internal constant STORAGE_SLOT =
-        keccak256('hexlink.contracts.storage.ERC4337Storage');
+        keccak256('hexlink.contracts.storage.HexlinkAuthStorage');
 
     function layout() internal pure returns (Layout storage l) {
         bytes32 slot = STORAGE_SLOT;
@@ -58,13 +58,23 @@ abstract contract HexlinkAuth {
         return AuthConfig(259200, 3600); // (3 days, 1 hour)
     }
 
+    function _validate(
+        RequestInfo memory info,
+        AuthProof calldata proof
+    ) internal view {
+        // account admin cannot be first factor
+        require(proof.authType != 0, "HEXL000");
+        _validateAuthProof(info, proof);
+    }
+
     function _validate2Fac(
         RequestInfo memory info,
         AuthProof calldata proof1, // from oracle
         AuthProof calldata proof2 // from account
     ) internal view {
-        _validate(info, proof1);
-        _validate(info, proof2);
+        _validateAuthProof(info, proof1);
+        _validateAuthProof(info, proof2);
+        //[first factor, second factor], order matters
         require(proof1.authType != 0 && proof2.authType == 0, "HEXL031"); // 2-fac
     }
 
@@ -72,11 +82,11 @@ abstract contract HexlinkAuth {
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal returns(uint256) {
-        _validate(info, proof);
+        _validateAuthProof(info, proof);
         HexlinkAuthStorage.Layout storage s = HexlinkAuthStorage.layout();
         PrevAuthProof memory prev = s.proofs[info.requestId];
         if (prev.verifiedAt == 0) { // stage 1
-            // account singature cannot be first factor
+            // account admin cannot be first factor
             require(proof.authType != 0, "HEXL010");
             s.proofs[info.requestId].verifiedAt = block.timestamp;
             s.proofs[info.requestId].authType = proof.authType;
@@ -90,17 +100,18 @@ abstract contract HexlinkAuth {
         }
     }
 
-    function _validate(
+    function _validateAuthProof(
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal view {
+        uint256 ttl = authConfig(proof.authType).ttl;
         require(
-            proof.issuedAt < block.timestamp &&
-                proof.issuedAt + authConfig(proof.authType).ttl > block.timestamp,
+            proof.issuedAt < block.timestamp && proof.issuedAt + ttl > block.timestamp,
             "HEXL023"
         );
         bytes32 message = keccak256(abi.encode(info.requestId, proof.issuedAt, proof.authType));
-        try IERC1271(_validator(info, proof)).isValidSignature(
+        address validator = proof.authType == 0 ? info.account : oracle(proof.authType);
+        try IERC1271(validator).isValidSignature(
             message, proof.signature
         ) returns (bytes4 returnvalue) {
             require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
@@ -109,12 +120,5 @@ abstract contract HexlinkAuth {
         } catch {
             revert("HEXL006");
         }
-    }
-
-    function _validator(
-        RequestInfo memory info,
-        AuthProof calldata proof
-    ) internal view returns(address) {
-        return proof.authType == 0 ? info.account : oracle(proof.authType);
     }
 }
