@@ -54,37 +54,6 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         return _addressOfName(name, s.states[name].account);
     }
 
-    function deploy(Request calldata request, AuthProof calldata proof) external {
-        RequestInfo memory info = _buildRequestInfo(request);
-        _validate(info, proof);
-        address account = Clones.cloneDeterministic(accountBase_, request.name);
-        IInitializable(account).init(request.params);
-        s.states[request.name].nonce = info.nonce + 1;
-    }
-
-    function reset(
-        Request calldata request,
-        AuthProof[] calldata proofs
-    ) external {
-        RequestInfo memory info = _buildRequestInfo(request);
-        if (proofs.length == 2) {
-            _validate2Fac(info, proofs[0], proofs[1]);
-        } else { // if not 2-fac, only consume first auth proof
-            address defaultAccount = _defaultAccount(request.name);
-            // account already deployed or reset, so require 2-stage auth
-            if (info.account != defaultAccount || defaultAccount.isContract()) {
-                uint256 stage = _validate2Stage(info, proofs[0]);
-                if (stage == 1) {
-                    return; // pending confirm, not doing anything
-                }
-            } else { // bootstrap
-                _validate(info, proofs[0]);
-            }
-        }
-        _reset(request.name, request.params);
-        s.states[request.name].nonce = info.nonce + 1;
-    }
-
     // this will invalidate pending 2-stage request
     function bumpNonce(Request calldata request, AuthProof calldata proof) public {
         RequestInfo memory info = _buildRequestInfo(request);
@@ -92,9 +61,54 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         s.states[request.name].nonce = info.nonce + 1;
     }
 
+    // this will deploy default account contract
+    function deploy(Request calldata request, AuthProof calldata proof) external {
+        bumpNonce(request, proof);
+        address account = Clones.cloneDeterministic(accountBase_, request.name);
+        IInitializable(account).init(request.params);
+    }
+
+    function reset(
+        Request calldata request,
+        AuthProof calldata proof
+    ) external {
+        RequestInfo memory info = _buildRequestInfo(request);
+        address defaultAccount = _defaultAccount(request.name);
+        require(
+            info.account == defaultAccount && !defaultAccount.isContract(),
+            "HEXL000"
+        );
+        _validate(info, proof);
+        _reset(request.name, request.params);
+        s.states[request.name].nonce = info.nonce + 1;
+    }
+
+    function reset2Fac(
+        Request calldata request,
+        AuthProof calldata proof1,
+        AuthProof calldata proof2
+    ) external {
+        RequestInfo memory info = _buildRequestInfo(request);
+        _validate2Fac(info, proof1, proof2);
+        _reset(request.name, request.params);
+        s.states[request.name].nonce = info.nonce + 1;
+    }
+ 
+    function reset2Stage(
+        Request calldata request,
+        AuthProof calldata proof
+    ) external {
+        RequestInfo memory info = _buildRequestInfo(request);
+        uint256 stage = _validate2Stage(info, proof);
+        if (stage == 2) {
+            _reset(request.name, request.params);
+            s.states[request.name].nonce = info.nonce + 1;
+        }
+    }
+
     function _buildRequestInfo(
         Request calldata request
-    ) internal view returns (RequestInfo memory) {
+    ) private view returns (RequestInfo memory) {
         AccountState memory state = s.states[request.name];
         require(request.func == msg.sig, "HEXL021");
         require(state.nonce == request.nonce, "HEXL020");

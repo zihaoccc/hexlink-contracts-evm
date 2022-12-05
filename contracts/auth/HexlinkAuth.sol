@@ -75,30 +75,29 @@ abstract contract HexlinkAuth {
         AuthProof calldata proof1, // from oracle
         AuthProof calldata proof2 // from account
     ) internal view {
-        _validateAuthProof(info, proof1);
-        _validateAuthProof(info, proof2);
         //[first factor, second factor], order matters
         require(proof1.authType != 0 && proof2.authType == 0, "HEXL031"); // 2-fac
+        _validateAuthProof(info, proof1);
+        _validateAuthProof(info, proof2);
     }
 
     function _validate2Stage(
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal returns(uint256) {
-        _validateAuthProof(info, proof);
         HexlinkAuthStorage.Layout storage s = HexlinkAuthStorage.layout();
         PrevAuthProof memory prev = s.proofs[info.requestId];
         if (prev.verifiedAt == 0) { // stage 1
-            // account admin cannot be first factor
-            require(proof.authType != 0, "HEXL010");
+            _validate(info, proof);
             s.proofs[info.requestId].verifiedAt = block.timestamp;
             s.proofs[info.requestId].authType = proof.authType;
             return 1;
         } else { // stage 2
-            if (proof.authType != 0) { // 2-stage with oracle
+            if (proof.authType != 0) {
                 uint256 lockTime = authConfig(proof.authType).twoStageLock;
                 require(block.timestamp > prev.verifiedAt + lockTime, "HEXL030");
             } // else 2-fac
+            _validateAuthProof(info, proof);
             return 2;
         }
     }

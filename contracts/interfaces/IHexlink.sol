@@ -25,6 +25,17 @@ interface IHexlink {
 
     function reset(
         Request calldata request,
-        AuthProof[] calldata proofs
+        AuthProof calldata proof
+    ) external;
+
+    function reset2Fac(
+        Request calldata request,
+        AuthProof calldata proof1,
+        AuthProof calldata proof2
+    ) external;
+
+    function reset2Stage(
+        Request calldata request,
+        AuthProof calldata proof
     ) external;
 }
