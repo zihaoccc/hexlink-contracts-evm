@@ -9,7 +9,7 @@ struct Request {
     bytes32 name; // user id
     bytes4 func; // function selector
     bytes params; // function params
-    uint256 nonce; // nonce to sign
+    uint96 nonce; // nonce to sign
 }
 
 /*
@@ -18,16 +18,12 @@ struct Request {
  * hash of AuthProofToSign struct
  */
 struct AuthProof{
-    bytes32 name;
-    bytes32 requestId;
-    uint256 expiredAt; // set by oracle verifiers
+    uint256 issuedAt; // set by oracle verifiers
     uint256 authType; // set by oracle verifiers
     bytes signature; // aggregated signature
 }
 
 interface IHexlink {
-    function accountImpl() external view returns (address);
-
     function addressOfName(bytes32 name) external view returns (address);
 
     function deploy(
@@ -37,17 +33,6 @@ interface IHexlink {
 
     function reset(
         Request calldata request,
-        AuthProof calldata proof
-    ) external;
-
-    function reset2Fac(
-        Request calldata request,
-        AuthProof calldata proof1,
-        AuthProof calldata proof2
-    ) external;
-
-    function reset2Stage(
-        Request calldata request,
-        AuthProof calldata proof
+        AuthProof[] calldata proofs
     ) external;
 }

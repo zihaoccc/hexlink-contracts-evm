@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.4;
 
-import "./IInitializable.sol";
+import "../interfaces/IInitializable.sol";
 
 library InitializerStorage {
     struct Layout {

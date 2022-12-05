@@ -3,10 +3,11 @@ pragma solidity ^0.8.4;
 
 /* solhint-disable avoid-low-level-calls */
 
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "../lib/Initializable.sol";
+import "./Initializable.sol";
 import "../interfaces/IAccount.sol";
 
 abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
@@ -41,7 +42,7 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
         bytes calldata signature
     ) external override view returns(bytes4) {
         _validateSignature(message, signature);
-        return IAccount.validateSignature.selector;
+        return IERC1271.isValidSignature.selector;
     }
 
     function _execBatch(BasicUserOp[] calldata ops) internal virtual {
