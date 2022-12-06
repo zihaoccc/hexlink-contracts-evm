@@ -13,17 +13,17 @@ import "../interfaces/IHexlink.sol";
 import "../interfaces/INonce.sol";
 import "../auth/HexlinkAuth.sol";
 
-struct AccountState {
-    address account;
-    uint96 nonce;
-}
-
-struct AppStorage {
-    // account name => account state
-    mapping(bytes32 => AccountState) states;
-}
-
 contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
+    struct AccountState {
+        address account;
+        uint96 nonce;
+    }
+
+    struct AppStorage {
+        // account name => account state
+        mapping(bytes32 => AccountState) states;
+    }
+
     using Address for address;
 
     event Reset(bytes32 indexed name, address indexed account);

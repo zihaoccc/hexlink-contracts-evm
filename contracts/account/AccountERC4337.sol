@@ -5,25 +5,15 @@ import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
 import "./AccountBase.sol";
 
-library ERC4337Storage {
-    struct Layout {
+contract AccountERC4337 is AccountBase, BaseWallet {
+    struct AppStorage {
         address entryPoint;
         uint64 nonce;
     }
 
-    bytes32 internal constant STORAGE_SLOT =
-        keccak256('hexlink.contracts.storage.ERC4337Storage');
-
-    function layout() internal pure returns (Layout storage l) {
-        bytes32 slot = STORAGE_SLOT;
-        assembly {
-            l.slot := slot
-        }
-    }
-}
-
-contract AccountERC4337 is AccountBase, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
+
+    AppStorage internal s;
 
     function _init(bytes calldata initData) internal override {
         (address admin, address beacon, bytes memory data, address _entryPoint) =
@@ -34,11 +24,11 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     }
 
     function nonce() public view virtual returns (uint256) {
-        return ERC4337Storage.layout().nonce;
+        return s.nonce;
     }
 
     function entryPoint() public view override virtual returns (address) {
-        return ERC4337Storage.layout().entryPoint;
+        return s.entryPoint;
     }
 
     function execBatch(BasicUserOp[] calldata ops) onlyEntryPoint external virtual {
@@ -66,12 +56,12 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     }
 
     function _updateEntryPoint(address newEntryPoint) internal {
-        ERC4337Storage.layout().entryPoint = newEntryPoint;
+        s.entryPoint = newEntryPoint;
         emit SetEntryPoint(newEntryPoint);
     }
 
     function _validateAndUpdateNonce(UserOperation calldata userOp) internal override virtual {
-        require(ERC4337Storage.layout().nonce++ == userOp.nonce, "HEXLA005");
+        require(s.nonce++ == userOp.nonce, "HEXLA005");
     }
 
     function _validateSignature(UserOperation calldata userOp, bytes32 requestId, address)
