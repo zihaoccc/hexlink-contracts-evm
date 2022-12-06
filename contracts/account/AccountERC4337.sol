@@ -15,10 +15,9 @@ contract AccountERC4337 is AccountSimple, BaseWallet {
     AppStorage internal s;
 
     function _init(bytes calldata initData) internal override {
-        (address admin, address beacon, bytes memory data, address _entryPoint) =
-            abi.decode(initData, (address, address, bytes, address));
-        _changeAdmin(admin);
-        _upgradeBeaconToAndCall(beacon, data, false);
+        (address admin, address beacon, address _entryPoint) =
+            abi.decode(initData, (address, address, address));
+        _init(admin, beacon);
         s.entryPoint = newEntryPoint;
     }
 

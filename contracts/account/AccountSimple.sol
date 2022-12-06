@@ -5,10 +5,9 @@ import "./AccountBase.sol";
 
 contract AccountSimple is AccountBase {
     function _init(bytes calldata initData) internal override {
-        (address admin, address beacon, bytes memory data) =
-            abi.decode(initData, (address, address, bytes));
-        _changeAdmin(admin);
-        _upgradeBeaconToAndCall(beacon, data, false);
+        (address admin, address beacon) =
+            abi.decode(initData, (address, address));
+        _init(admin, beacon);
     }
 
     function changeAdmin(address newAdmin) external {

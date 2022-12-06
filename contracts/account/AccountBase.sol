@@ -45,6 +45,11 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
         return IERC1271.isValidSignature.selector;
     }
 
+    function _init(address _admin, address _beacon) internal {
+        _changeAdmin(_admin);
+        _upgradeBeaconToAndCall(_beacon, "", false);
+    }
+
     function _execBatch(BasicUserOp[] calldata ops) internal virtual {
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
