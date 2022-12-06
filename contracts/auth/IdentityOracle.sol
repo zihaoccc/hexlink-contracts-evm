@@ -23,7 +23,7 @@ contract IdentityOracle is IERC1271, SafeOwnable {
         address validator,
         bytes memory /* signature */
     ) external onlyOwner {
-        require(validator != address(0), "HEXL005");
+        require(validator != address(0), "IO001");
         validators_[validator].registered = true;
     }
 
@@ -32,8 +32,8 @@ contract IdentityOracle is IERC1271, SafeOwnable {
         bytes memory signature
     ) external view override returns(bytes4) {
         (address validator, bytes memory sig) = abi.decode(signature, (address, bytes));
-        require(validators_[validator].registered, "HEXL001");
-        require(validator == message.recover(sig), "HEXL010");
+        require(validators_[validator].registered, "IO002");
+        require(validator == message.recover(sig), "IO003");
         return IERC1271.isValidSignature.selector;
     }
 }

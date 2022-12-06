@@ -22,6 +22,11 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
 
     using Address for address;
 
+    modifier onlyAdmin() {
+        require(msg.sender == _getAdmin(), "HEXLA000");
+        _;
+    }
+
     receive() external payable { }
 
     fallback(bytes calldata) external returns (bytes memory) {
@@ -53,12 +58,11 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
     }
 
     function _exec(BasicUserOp calldata op) internal {
-        require(address(this).balance >= op.value, "HEXL002");
         (
             bool success,
             bytes memory data
         ) = op.to.call{value: op.value, gas: op.callGasLimit}(op.callData);
-        op.to.verifyCallResultFromTarget(success, data, "HEXL003");
+        op.to.verifyCallResultFromTarget(success, data, "HEXLA001");
     }
 
     function _validateSignature(bytes32 message, bytes calldata signature) internal view {
@@ -66,14 +70,14 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
         bytes32 reqHash = message.toEthSignedMessageHash();
         if (Address.isContract(signer)) {
             try IERC1271(signer).isValidSignature(reqHash, signature) returns (bytes4 returnvalue) {
-                require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
+                require(returnvalue == IERC1271.isValidSignature.selector, "HEXLA002");
             } catch Error(string memory reason) {
                 revert(reason);
             } catch {
-                revert("HEXL006");
+                revert("HEXLA003");
             }
         } else {
-            require(signer == reqHash.recover(signature), "HEXL010");
+            require(signer == reqHash.recover(signature), "HEXLA004");
         }
     }
 }

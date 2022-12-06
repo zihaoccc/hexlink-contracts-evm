@@ -25,7 +25,7 @@ library ERC4337Storage {
 contract AccountERC4337 is AccountBase, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
 
-    function _init(bytes memory initData) internal override {
+    function _init(bytes calldata initData) internal override {
         (address admin, address beacon, bytes memory data, address _entryPoint) =
             abi.decode(initData, (address, address, bytes, address));
         _changeAdmin(admin);
@@ -71,7 +71,7 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     }
 
     function _validateAndUpdateNonce(UserOperation calldata userOp) internal override virtual {
-        require(ERC4337Storage.layout().nonce++ == userOp.nonce, "HEXL008");
+        require(ERC4337Storage.layout().nonce++ == userOp.nonce, "HEXLA005");
     }
 
     function _validateSignature(UserOperation calldata userOp, bytes32 requestId, address)

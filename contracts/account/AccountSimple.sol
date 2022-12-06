@@ -4,12 +4,7 @@ pragma solidity ^0.8.4;
 import "./AccountBase.sol";
 
 contract AccountSimple is AccountBase {
-    modifier onlyAdmin() {
-        require(msg.sender == _getAdmin(), "HEXL013");
-        _;
-    }
-
-    function _init(bytes memory initData) internal override {
+    function _init(bytes calldata initData) internal override {
         (address admin, address beacon, bytes memory data) =
             abi.decode(initData, (address, address, bytes));
         _changeAdmin(admin);

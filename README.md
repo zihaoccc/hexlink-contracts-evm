@@ -4,7 +4,16 @@ This is the repo to hold all evm smart contracts for Hexlink, including:
 
 1. The wallet contract implementation
 2. The identity oracle implementation
-3. The Hexlink name service and deployer implementation
+3. The Hexlink name service implementation
+4. The Hexlink auth implementation
+
+# Hexlink Contract Design
+
+The design could be found at:
+
+1. [Hexlink Contract Design](https://docs.google.com/document/d/1rggtUx_oS0rD3e9hYCvAL0IslBUc7OaOQC9ily24X1A/edit?usp=sharing)
+2. [Hexlink Wallet Contract Design](https://docs.google.com/document/d/1r2hulO2eJJokoH_gO9cdKQTyegUnTUCtSN-_M3E9hnw/edit?usp=sharing)
+3. [Hexlink Identity Oracle Design](https://docs.google.com/document/d/12icd_yso1thRwwbgfArgzoU2y_GI-3bNSc9jhxZqugw/edit?usp=sharing)
 
 # Commands
 
@@ -33,4 +42,4 @@ ndoppler run -- npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS $
 
 # Error Code Map
 
-HEXL001: 
+Check the map [here](https://docs.google.com/spreadsheets/d/1-7L5A0c2slNonNL85h6HEMTrVbWVo7VBsJSn9LEUHxg/edit?usp=sharing)

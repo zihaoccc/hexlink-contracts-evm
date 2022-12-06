@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "../utils/Auth.sol";
 
 struct PrevAuthProof {
@@ -37,6 +38,8 @@ library HexlinkAuthStorage {
 }
 
 abstract contract HexlinkAuth {
+    using Address for address;
+
     struct AuthConfig {
         uint256 twoStageLock;
         uint256 ttl;
@@ -51,7 +54,8 @@ abstract contract HexlinkAuth {
     function _setOracles(uint256[] memory authTypes, address[] memory oracles) internal {
         require(authTypes.length == oracles.length, "HEXL001");
         for (uint256 i = 0; i < authTypes.length; i++) {
-            require(authTypes[i] != 0 && oracles[i] != address(0), "HEXL033");
+            require(authTypes[i] != 0 && oracles[i] != address(0), "HEXL002");
+            require(oracles[i].isContract(), "HEXL013");
             HexlinkAuthStorage.layout().oracles[authTypes[i]] = oracles[i];
             emit SetOracle(authTypes[i], oracles[i]);
         }
@@ -65,8 +69,7 @@ abstract contract HexlinkAuth {
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal view {
-        // account admin cannot be first factor
-        require(proof.authType != 0, "HEXL000");
+        require(_isValid1stFactor(proof), "HEXL003");
         _validateAuthProof(info, proof);
     }
 
@@ -75,9 +78,9 @@ abstract contract HexlinkAuth {
         AuthProof calldata proof1, // from oracle
         AuthProof calldata proof2 // from account
     ) internal view {
+        _validate(info, proof1);
+        require(_isValid2ndFac(proof2), "HEXL004");
         //[first factor, second factor], order matters
-        require(proof1.authType != 0 && proof2.authType == 0, "HEXL031"); // 2-fac
-        _validateAuthProof(info, proof1);
         _validateAuthProof(info, proof2);
     }
 
@@ -93,9 +96,9 @@ abstract contract HexlinkAuth {
             s.proofs[info.requestId].authType = proof.authType;
             return 1;
         } else { // stage 2
-            if (proof.authType != 0) {
+            if (!_isValid2ndFac(proof)) {
                 uint256 lockTime = authConfig(proof.authType).twoStageLock;
-                require(block.timestamp > prev.verifiedAt + lockTime, "HEXL030");
+                require(block.timestamp > prev.verifiedAt + lockTime, "HEXL005");
             } // else 2-fac
             _validateAuthProof(info, proof);
             return 2;
@@ -109,18 +112,34 @@ abstract contract HexlinkAuth {
         uint256 ttl = authConfig(proof.authType).ttl;
         require(
             proof.issuedAt < block.timestamp && proof.issuedAt + ttl > block.timestamp,
-            "HEXL023"
+            "HEXL006"
         );
         bytes32 message = keccak256(abi.encode(info.requestId, proof.issuedAt, proof.authType));
         address validator = proof.authType == 0 ? info.account : oracle(proof.authType);
         try IERC1271(validator).isValidSignature(
             message, proof.signature
         ) returns (bytes4 returnvalue) {
-            require(returnvalue == IERC1271.isValidSignature.selector, "HEXL009");
+            require(returnvalue == IERC1271.isValidSignature.selector, "HEXL007");
         } catch Error(string memory reason) {
             revert(reason);
         } catch {
-            revert("HEXL006");
+            revert("HEXL008");
         }
+    }
+
+    // in current impl we only allow proof from
+    // oracle as first factor
+    function _isValid1stFactor(
+        AuthProof calldata proof
+    ) internal pure returns(bool) {
+        return proof.authType != 0;
+    }
+
+    // in current impl we only allow proof from
+    // account admin as second factor
+    function _isValid2ndFac(
+        AuthProof calldata proof
+    ) internal pure returns(bool) {
+        return proof.authType == 0;
     }
 }

@@ -5,7 +5,6 @@ import "../../interfaces/IERC4337Wallet.sol";
 import "./UserOperation.sol";
 
 /* solhint-disable avoid-low-level-calls */
-/* solhint-disable no-inline-assembly */
 /* solhint-disable reason-string */
 
 /**
@@ -17,7 +16,7 @@ abstract contract BaseWallet is IWallet {
     using LibUserOperation for UserOperation;
 
     modifier onlyEntryPoint() {
-        require(msg.sender == entryPoint(), "HEXL011");
+        require(msg.sender == entryPoint(), "HEXLA006");
         _;
     }
 
@@ -66,7 +65,10 @@ abstract contract BaseWallet is IWallet {
      */
     function _payPrefund(uint256 missingWalletFunds) internal virtual {
         if (missingWalletFunds != 0) {
-            (bool success,) = payable(msg.sender).call{value : missingWalletFunds, gas : type(uint256).max}("");
+            (bool success,) = payable(msg.sender).call{
+                value : missingWalletFunds,
+                gas : type(uint256).max
+            }("");
             (success);
             //ignore failure (its EntryPoint's job to verify, not wallet.)
         }

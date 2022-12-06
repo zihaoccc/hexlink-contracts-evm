@@ -62,12 +62,15 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
     }
 
     // this will deploy default account contract
+    // only first factor is required
     function deploy(Request calldata request, AuthProof calldata proof) external {
         bumpNonce(request, proof);
         address account = Clones.cloneDeterministic(accountBase_, request.name);
         IInitializable(account).init(request.params);
     }
 
+    // reset name to account mapping when account is not initiated
+    // only first factor is required
     function reset(
         Request calldata request,
         AuthProof calldata proof
@@ -76,13 +79,17 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         address defaultAccount = _defaultAccount(request.name);
         require(
             info.account == defaultAccount && !defaultAccount.isContract(),
-            "HEXL000"
+            "HEXL009"
         );
         _validate(info, proof);
         _reset(request.name, request.params);
         s.states[request.name].nonce = info.nonce + 1;
     }
 
+    // reset name to account mapping with 2-fac
+    // when account is already initiated
+    // proof1 must be first factor from oracle
+    // proof2 must be second factor from account admin
     function reset2Fac(
         Request calldata request,
         AuthProof calldata proof1,
@@ -94,6 +101,14 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         s.states[request.name].nonce = info.nonce + 1;
     }
  
+    // reset name to account mapping with 2-stage
+    // when account is already initiated
+    // If it's first factor for stage one, we will not
+    // reset but just validate and record the auth proof.
+    // In this case, nonce will not be updated.
+    // If it's second factor for stage two, we will
+    // validate the proof, reset the account and bump
+    // the nonce.
     function reset2Stage(
         Request calldata request,
         AuthProof calldata proof
@@ -110,8 +125,8 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
         Request calldata request
     ) private view returns (RequestInfo memory) {
         AccountState memory state = s.states[request.name];
-        require(request.func == msg.sig, "HEXL021");
-        require(state.nonce == request.nonce, "HEXL020");
+        require(request.func == msg.sig, "HEXL010");
+        require(state.nonce == request.nonce, "HEXL011");
         return RequestInfo(
             keccak256(abi.encode(request, address(this), block.chainid)),
             _addressOfName(request.name, state.account),
@@ -121,7 +136,7 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
 
     function _reset(bytes32 name, bytes calldata params) internal {
         address account = abi.decode(params, (address));
-        require(account != address(0), "HEXL003");
+        require(account != address(0), "HEXL012");
         s.states[name].account = account;
         emit Reset(name, account);
     }
