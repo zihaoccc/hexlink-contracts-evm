@@ -35,6 +35,12 @@ contract HexlinkHelper {
         Request memory request = Request(
             name, IHexlink.reset.selector, abi.encode(account), nonce
         );
-        IHexlink(hexlink).reset(request, proofs);
+        if (proofs.length == 2) {
+            IHexlink(hexlink).reset2Fac(request, proofs[0], proofs[1]);
+        } else if (proofs.length == 1) {
+            IHexlink(hexlink).reset2Stage(request, proofs[0]);
+        } else {
+            revert("HEXL014");
+        }
     }
 }

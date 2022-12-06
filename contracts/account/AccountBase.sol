@@ -22,11 +22,6 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
 
     using Address for address;
 
-    modifier onlyAdmin() {
-        require(msg.sender == _getAdmin(), "HEXLA000");
-        _;
-    }
-
     receive() external payable { }
 
     fallback(bytes calldata) external returns (bytes memory) {

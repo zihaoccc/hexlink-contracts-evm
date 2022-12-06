@@ -11,7 +11,8 @@ contract AccountSimple is AccountBase {
         _upgradeBeaconToAndCall(beacon, data, false);
     }
 
-    function changeAdmin(address newAdmin) onlyAdmin external {
+    function changeAdmin(address newAdmin) external {
+        _validateCaller();
         _changeAdmin(newAdmin);
     }
 
@@ -19,15 +20,22 @@ contract AccountSimple is AccountBase {
         address beacon,
         bytes memory data,
         bool forceCall
-    ) onlyAdmin external {
+    ) external {
+        _validateCaller();
         _upgradeBeaconToAndCall(beacon, data, forceCall);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) onlyAdmin external virtual {
+    function execBatch(BasicUserOp[] calldata ops) external virtual {
+        _validateCaller();
         _execBatch(ops);
     }
 
-    function exec(BasicUserOp calldata op) onlyAdmin external virtual {
+    function exec(BasicUserOp calldata op) external virtual {
+        _validateCaller();
         _exec(op);
+    }
+
+    function _validateCaller() internal virtual {
+        require(msg.sender == _getAdmin(), "HEXLA012");
     }
 }

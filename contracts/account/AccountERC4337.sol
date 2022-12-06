@@ -5,14 +5,13 @@ import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
 import "./AccountBase.sol";
 
-contract AccountERC4337 is AccountBase, BaseWallet {
-    struct AppStorage {
-        address entryPoint;
-        uint64 nonce;
-    }
-
+contract AccountERC4337 is AccountSimple, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
 
+    struct AppStorage {
+        address entryPoint;
+        uint256 nonce;
+    }
     AppStorage internal s;
 
     function _init(bytes calldata initData) internal override {
@@ -20,7 +19,7 @@ contract AccountERC4337 is AccountBase, BaseWallet {
             abi.decode(initData, (address, address, bytes, address));
         _changeAdmin(admin);
         _upgradeBeaconToAndCall(beacon, data, false);
-        _updateEntryPoint(_entryPoint);
+        s.entryPoint = newEntryPoint;
     }
 
     function nonce() public view virtual returns (uint256) {
@@ -31,31 +30,7 @@ contract AccountERC4337 is AccountBase, BaseWallet {
         return s.entryPoint;
     }
 
-    function execBatch(BasicUserOp[] calldata ops) onlyEntryPoint external virtual {
-        _execBatch(ops);
-    }
-
-    function exec(BasicUserOp calldata op) onlyEntryPoint external virtual {
-        _exec(op);
-    }
-
-    function changeAdmin(address newAdmin) onlyEntryPoint external {
-        _changeAdmin(newAdmin);
-    }
-
-    function upgradeBeaconToAndCall(
-        address beacon,
-        bytes memory data,
-        bool forceCall
-    ) onlyEntryPoint external {
-        _upgradeBeaconToAndCall(beacon, data, forceCall);
-    }
-
     function updateEntryPoint(address newEntryPoint) onlyEntryPoint external {
-        _updateEntryPoint(newEntryPoint);
-    }
-
-    function _updateEntryPoint(address newEntryPoint) internal {
         s.entryPoint = newEntryPoint;
         emit SetEntryPoint(newEntryPoint);
     }
@@ -68,5 +43,9 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     internal override returns (uint256) {
         _validateSignature(requestId, userOp.signature);
         return 0;
+    }
+
+    function _validateCaller() internal override {
+        require(msg.sender == entrypoint() || msg.sender == _getAdmin(), "HEXLA013");
     }
 }
