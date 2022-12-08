@@ -7,83 +7,79 @@ import "@solidstate/contracts/access/ownable/SafeOwnable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
-import "../account/AccountProxy.sol";
-import "../interfaces/IInitializable.sol";
 import "../interfaces/IHexlink.sol";
-import "../interfaces/INonce.sol";
 import "../auth/HexlinkAuth.sol";
 
-contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
+contract Hexlink is IHexlink, HexlinkAuth, SafeOwnable {
     struct AccountState {
         address account;
         uint96 nonce;
-    }
-
-    struct AppStorage {
-        // account name => account state
-        mapping(bytes32 => AccountState) states;
     }
 
     using Address for address;
 
     event Reset(bytes32 indexed name, address indexed account);
 
-    address immutable accountBase_;
-    AppStorage internal s;
+    address public immutable accountBase;
+    // account name => account state
+    mapping(bytes32 => AccountState) states;
 
     constructor(address _accountBase) {
-        accountBase_ = _accountBase;
+        accountBase = _accountBase;
     }
 
-    function setOracles(
-        uint256[] memory authTypes,
-        address[] memory oracles
-    ) external onlyOwner {
-        _setOracles(authTypes, oracles);
-    }
-
-    function nonce(bytes32 name) external override view returns (uint96) {
-        return s.states[name].nonce;
-    }
-
-    function accountBase() external override view returns (address) {
-        return accountBase_;
+    function nonce(bytes32 name) external view returns (uint96) {
+        return states[name].nonce;
     }
 
     function addressOfName(bytes32 name) public view returns (address) {
-        return _addressOfName(name, s.states[name].account);
+        return _addressOfName(name, states[name].account);
+    }
+
+    function setOracleRegistry(address oracleRegistry) external onlyOwner {
+        _setOracleRegistry(oracleRegistry);
     }
 
     // this will invalidate pending 2-stage request
-    function bumpNonce(Request calldata request, AuthProof calldata proof) public {
-        RequestInfo memory info = _buildRequestInfo(request);
+    function bumpNonce(
+        bytes32 name,
+        AuthProof calldata proof
+    ) external override {
+        RequestInfo memory info = _buildRequestInfo(name, "");
         _validate(info, proof);
-        s.states[request.name].nonce = info.nonce + 1;
+        states[name].nonce = info.nonce + 1;
     }
 
     // this will deploy default account contract
     // only first factor is required
-    function deploy(Request calldata request, AuthProof calldata proof) external {
-        bumpNonce(request, proof);
-        address account = Clones.cloneDeterministic(accountBase_, request.name);
-        IInitializable(account).init(request.params);
+    function deploy(
+        bytes32 name,
+        bytes calldata txData,
+        AuthProof calldata proof
+    ) external override {
+        RequestInfo memory info = _buildRequestInfo(name, txData);
+        _validate(info, proof);
+        address account = Clones.cloneDeterministic(accountBase, name);
+        account.functionCall(txData);
+        states[name].nonce = info.nonce + 1;
     }
 
     // reset name to account mapping when account is not initiated
     // only first factor is required
     function reset(
-        Request calldata request,
+        bytes32 name,
+        address account,
         AuthProof calldata proof
-    ) external {
-        RequestInfo memory info = _buildRequestInfo(request);
-        address defaultAccount = _defaultAccount(request.name);
+    ) external override {
+        RequestInfo memory info = _buildRequestInfo(name, abi.encode(account));
+        address defaultAccount = _defaultAccount(name);
         require(
             info.account == defaultAccount && !defaultAccount.isContract(),
             "HEXL009"
         );
         _validate(info, proof);
-        _reset(request.name, request.params);
-        s.states[request.name].nonce = info.nonce + 1;
+        _reset(name, account);
+        states[name].nonce = info.nonce + 1;
     }
 
     // reset name to account mapping with 2-fac
@@ -91,14 +87,15 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
     // proof1 must be first factor from oracle
     // proof2 must be second factor from account admin
     function reset2Fac(
-        Request calldata request,
+        bytes32 name,
+        address account,
         AuthProof calldata proof1,
         AuthProof calldata proof2
-    ) external {
-        RequestInfo memory info = _buildRequestInfo(request);
+    ) external override {
+        RequestInfo memory info = _buildRequestInfo(name, abi.encode(account));
         _validate2Fac(info, proof1, proof2);
-        _reset(request.name, request.params);
-        s.states[request.name].nonce = info.nonce + 1;
+        _reset(name, account);
+        states[name].nonce = info.nonce + 1;
     }
  
     // reset name to account mapping with 2-stage
@@ -110,39 +107,39 @@ contract Hexlink is IHexlink, INonce, HexlinkAuth, SafeOwnable {
     // validate the proof, reset the account and bump
     // the nonce.
     function reset2Stage(
-        Request calldata request,
+        bytes32 name,
+        address account,
         AuthProof calldata proof
-    ) external {
-        RequestInfo memory info = _buildRequestInfo(request);
+    ) external override {
+        RequestInfo memory info = _buildRequestInfo(name, abi.encode(account));
         uint256 stage = _validate2Stage(info, proof);
         if (stage == 2) {
-            _reset(request.name, request.params);
-            s.states[request.name].nonce = info.nonce + 1;
+            _reset(name, account);
+            states[name].nonce = info.nonce + 1;
         }
     }
 
     function _buildRequestInfo(
-        Request calldata request
+        bytes32 name,
+        bytes memory data
     ) private view returns (RequestInfo memory) {
-        AccountState memory state = s.states[request.name];
-        require(request.func == msg.sig, "HEXL010");
-        require(state.nonce == request.nonce, "HEXL011");
+        AccountState memory state = states[name];
         return RequestInfo(
-            keccak256(abi.encode(request, address(this), block.chainid)),
-            _addressOfName(request.name, state.account),
+            name,
+            keccak256(abi.encode(msg.sig, data, address(this), block.chainid, state.nonce)),
+            _addressOfName(name, state.account),
             state.nonce
         );
     }
 
-    function _reset(bytes32 name, bytes calldata params) internal {
-        address account = abi.decode(params, (address));
+    function _reset(bytes32 name, address account) internal {
         require(account != address(0), "HEXL012");
-        s.states[name].account = account;
+        states[name].account = account;
         emit Reset(name, account);
     }
 
     function _defaultAccount(bytes32 name) private view returns(address) {
-        return Clones.predictDeterministicAddress(accountBase_, name);
+        return Clones.predictDeterministicAddress(accountBase, name);
     }
 
     function _addressOfName(

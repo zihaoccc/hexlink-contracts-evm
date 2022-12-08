@@ -7,38 +7,32 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "../interfaces/INonce.sol";
 import "../interfaces/IHexlink.sol";
-import "../interfaces/IInitializable.sol";
 
 contract HexlinkHelper {
     using Address for address;
 
-    event Deploy(bytes32 indexed salt, address indexed base, address account);
+    event Deploy(bytes32 indexed name, address indexed impl, address account);
 
-    function redeploy(bytes32 name, address impl, bytes calldata initData) public returns(address) {
+    function deploy(bytes32 name, address impl, bytes calldata txData) public returns(address) {
         address account = Clones.cloneDeterministic(impl, name);
-        IInitializable(account).init(initData);
+        account.functionCall(txData);
         emit Deploy(name, impl, account);
         return account;
     }
 
-    function redeployAndReset(
+    function deployAndReset(
         address impl,
         bytes32 name,
-        bytes calldata initData,
+        bytes calldata txData,
         address hexlink,
         AuthProof[] calldata proofs
     ) external {
-        address account = redeploy(name, impl, initData);
-        uint96 nonce = INonce(hexlink).nonce(name);
-        Request memory request = Request(
-            name, IHexlink.reset.selector, abi.encode(account), nonce
-        );
+        address account = deploy(name, impl, txData);
         if (proofs.length == 2) {
-            IHexlink(hexlink).reset2Fac(request, proofs[0], proofs[1]);
+            IHexlink(hexlink).reset2Fac(name, account, proofs[0], proofs[1]);
         } else if (proofs.length == 1) {
-            IHexlink(hexlink).reset2Stage(request, proofs[0]);
+            IHexlink(hexlink).reset2Stage(name, account, proofs[0]);
         } else {
             revert("HEXL014");
         }

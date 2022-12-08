@@ -4,8 +4,9 @@ pragma solidity ^0.8.4;
 import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
 import "./AccountBase.sol";
+import "../utils/Initializable.sol";
 
-contract AccountERC4337 is AccountSimple, BaseWallet {
+contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
     event SetEntryPoint(address indexed newEntryPoint);
 
     struct AppStorage {
@@ -14,11 +15,9 @@ contract AccountERC4337 is AccountSimple, BaseWallet {
     }
     AppStorage internal s;
 
-    function _init(bytes calldata initData) internal override {
-        (address admin, address beacon, address _entryPoint) =
-            abi.decode(initData, (address, address, address));
-        _init(admin, beacon);
-        s.entryPoint = newEntryPoint;
+    function init(address owner, address _entryPoint) external initializer {
+        OwnableStorage.layout().owner = owner;
+        s.entryPoint = _entryPoint;
     }
 
     function nonce() public view virtual returns (uint256) {
@@ -45,6 +44,6 @@ contract AccountERC4337 is AccountSimple, BaseWallet {
     }
 
     function _validateCaller() internal override {
-        require(msg.sender == entrypoint() || msg.sender == _getAdmin(), "HEXLA013");
+        require(msg.sender == entrypoint() || msg.sender == owner(), "HEXLA013");
     }
 }

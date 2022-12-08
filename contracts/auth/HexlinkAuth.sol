@@ -6,13 +6,15 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../utils/Auth.sol";
+import "../interfaces/IIdentityOracleRegistry.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;
-    uint256 authType;
+    uint128 identityType;
 }
 
 struct RequestInfo {
+    bytes32 name;
     bytes32 requestId;
     address account;
     uint96 nonce;
@@ -20,8 +22,7 @@ struct RequestInfo {
 
 library HexlinkAuthStorage {
     struct Layout {
-        // auth type => oracle address
-        mapping(uint256 => address) oracles;
+        address oracle;
         // request id => prev auth proof
         mapping(bytes32 => PrevAuthProof) proofs;
     }
@@ -45,23 +46,15 @@ abstract contract HexlinkAuth {
         uint256 ttl;
     }
 
-    event SetOracle(uint256 indexed authType, address indexed oracle);
-
-    function oracle(uint256 authType) public view returns (address) {
-        return HexlinkAuthStorage.layout().oracles[authType];
+    function oracleRegistry() public view returns(address) {
+        return HexlinkAuthStorage.layout().oracle;
     }
 
-    function _setOracles(uint256[] memory authTypes, address[] memory oracles) internal {
-        require(authTypes.length == oracles.length, "HEXL001");
-        for (uint256 i = 0; i < authTypes.length; i++) {
-            require(authTypes[i] != 0 && oracles[i] != address(0), "HEXL002");
-            require(oracles[i].isContract(), "HEXL013");
-            HexlinkAuthStorage.layout().oracles[authTypes[i]] = oracles[i];
-            emit SetOracle(authTypes[i], oracles[i]);
-        }
+    function _setOracleRegistry(address registry) internal {
+        HexlinkAuthStorage.layout().oracle = registry;
     }
 
-    function authConfig(uint256 /* authType */) public pure returns (AuthConfig memory) {
+    function authConfig(AuthProof memory /* proof */) public pure returns (AuthConfig memory) {
         return AuthConfig(259200, 3600); // (3 days, 1 hour)
     }
 
@@ -69,7 +62,7 @@ abstract contract HexlinkAuth {
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal view {
-        require(_isValid1stFactor(proof), "HEXL003");
+        require(_isValid1stFac(proof), "HEXL003");
         _validateAuthProof(info, proof);
     }
 
@@ -93,11 +86,11 @@ abstract contract HexlinkAuth {
         if (prev.verifiedAt == 0) { // stage 1
             _validate(info, proof);
             s.proofs[info.requestId].verifiedAt = block.timestamp;
-            s.proofs[info.requestId].authType = proof.authType;
+            s.proofs[info.requestId].identityType = proof.identityType;
             return 1;
         } else { // stage 2
             if (!_isValid2ndFac(proof)) {
-                uint256 lockTime = authConfig(proof.authType).twoStageLock;
+                uint256 lockTime = authConfig(proof).twoStageLock;
                 require(block.timestamp > prev.verifiedAt + lockTime, "HEXL005");
             } // else 2-fac
             _validateAuthProof(info, proof);
@@ -109,13 +102,21 @@ abstract contract HexlinkAuth {
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal view {
-        uint256 ttl = authConfig(proof.authType).ttl;
+        uint256 ttl = authConfig(proof).ttl;
         require(
             proof.issuedAt < block.timestamp && proof.issuedAt + ttl > block.timestamp,
             "HEXL006"
         );
-        bytes32 message = keccak256(abi.encode(info.requestId, proof.issuedAt, proof.authType));
-        address validator = proof.authType == 0 ? info.account : oracle(proof.authType);
+        bytes32 message = keccak256(
+            abi.encode(
+                info.name,
+                info.requestId,
+                proof.issuedAt,
+                proof.identityType,
+                proof.authType
+            )
+        );
+        address validator = proof.identityType == 0 ? info.account : _oracle(proof);
         try IERC1271(validator).isValidSignature(
             message, proof.signature
         ) returns (bytes4 returnvalue) {
@@ -127,12 +128,20 @@ abstract contract HexlinkAuth {
         }
     }
 
+    function _oracle(AuthProof calldata proof) private view returns(address) {
+        address oracle = IIdentityOracleRegistry(
+            HexlinkAuthStorage.layout().oracle
+        ).oracle(proof.identityType, proof.authType);
+        require(oracle != address(0), "HEXL017");
+        return oracle;
+    }
+
     // in current impl we only allow proof from
     // oracle as first factor
-    function _isValid1stFactor(
+    function _isValid1stFac(
         AuthProof calldata proof
     ) internal pure returns(bool) {
-        return proof.authType != 0;
+        return proof.identityType != 0;
     }
 
     // in current impl we only allow proof from
@@ -140,6 +149,6 @@ abstract contract HexlinkAuth {
     function _isValid2ndFac(
         AuthProof calldata proof
     ) internal pure returns(bool) {
-        return proof.authType == 0;
+        return proof.identityType == 0;
     }
 }

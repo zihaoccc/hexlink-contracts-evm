@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.4;
 
-import "../interfaces/IInitializable.sol";
-
 library InitializerStorage {
     struct Layout {
         bool initialized;
@@ -20,17 +18,11 @@ library InitializerStorage {
     }
 }
 
-abstract contract Initializable is IInitializable {
+abstract contract Initializable {
     modifier initializer() {
         InitializerStorage.Layout storage s = InitializerStorage.layout();
-        require(s.initialized == false, "HEXL001");
+        require(s.initialized == false, "HEXL015");
         _;
         s.initialized = true;
     }
-
-    function init(bytes calldata initData) external initializer {
-        _init(initData);
-    }
-
-    function _init(bytes calldata initData) internal virtual;
 }

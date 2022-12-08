@@ -8,7 +8,8 @@ pragma solidity ^0.8.4;
  * hash of AuthProofToSign struct
  */
 struct AuthProof{
-    uint256 issuedAt; // set by oracle verifiers
-    uint256 authType; // set by oracle verifiers
+    uint256 issuedAt;
+    uint128 authType;
+    uint128 identityType;
     bytes signature; // aggregated signature
 }

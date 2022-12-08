@@ -9,16 +9,14 @@ import "../utils/Initializable.sol";
 import "./Hexlink.sol";
 
 contract HexlinkUpgradable is Hexlink, Initializable, UUPSUpgradeable {
-    constructor(address accountImpl) Hexlink(accountImpl) { }
+    constructor(address accountBase) Hexlink(accountBase) { }
 
-    function _init(bytes calldata data) internal override {
-        (
-            address owner,
-            uint256[] memory authTypes,
-            address[] memory oracles
-        ) = abi.decode(data, (address, uint256[], address[]));
+    function init(
+        address owner,
+        address oracleRegistry
+    ) external initializer {
         OwnableStorage.layout().owner = owner;
-        _setOracles(authTypes, oracles);
+        _setOracleRegistry(oracleRegistry);
     }
 
     function _authorizeUpgrade(

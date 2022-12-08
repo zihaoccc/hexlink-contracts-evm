@@ -3,14 +3,12 @@ pragma solidity ^0.8.4;
 
 /* solhint-disable avoid-low-level-calls */
 
+import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "../utils/Initializable.sol";
-import "../interfaces/IAccount.sol";
 
-abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
+abstract contract AccountBase is IERC1271, Ownable {
     using ECDSA for bytes32;
 
     struct BasicUserOp {
@@ -29,14 +27,6 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
         return abi.encode(msg.sig);
     }
 
-    function admin() external override view returns(address) {
-        return _getAdmin();
-    }
-
-    function beacon() external view returns(address) {
-        return _getBeacon();
-    }
-
     function isValidSignature(
         bytes32 message,
         bytes calldata signature
@@ -45,16 +35,17 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
         return IERC1271.isValidSignature.selector;
     }
 
-    function _init(address _admin, address _beacon) internal {
-        _changeAdmin(_admin);
-        _upgradeBeaconToAndCall(_beacon, "", false);
-    }
-
-    function _execBatch(BasicUserOp[] calldata ops) internal virtual {
+    function execBatch(BasicUserOp[] calldata ops) external {
+        _validateCaller();
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
             _exec(ops[i]);
         }
+    }
+
+    function exec(BasicUserOp calldata op) external {
+        _validateCaller();
+        _exec(op);
     }
 
     function _exec(BasicUserOp calldata op) internal {
@@ -66,7 +57,7 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
     }
 
     function _validateSignature(bytes32 message, bytes calldata signature) internal view {
-        address signer = _getAdmin();
+        address signer = owner();
         bytes32 reqHash = message.toEthSignedMessageHash();
         if (Address.isContract(signer)) {
             try IERC1271(signer).isValidSignature(reqHash, signature) returns (bytes4 returnvalue) {
@@ -80,4 +71,6 @@ abstract contract AccountBase is IAccount, ERC1967Upgrade, Initializable {
             require(signer == reqHash.recover(signature), "HEXLA004");
         }
     }
+
+    function _validateCaller() internal virtual;
 }

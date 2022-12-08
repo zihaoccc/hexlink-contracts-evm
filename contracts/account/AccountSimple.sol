@@ -2,39 +2,44 @@
 pragma solidity ^0.8.4;
 
 import "./AccountBase.sol";
+import "../utils/Initializable.sol";
 
-contract AccountSimple is AccountBase {
-    function _init(bytes calldata initData) internal override {
-        (address admin, address beacon) =
-            abi.decode(initData, (address, address));
-        _init(admin, beacon);
+contract AccountSimple is AccountBase, Initializable {
+    using Address for address;
+    
+    event GasPayment(bytes32 indexed request, uint256 gasCost);
+
+    struct AppStorage {
+        uint256 nonce;
+    }
+    AppStorage internal s;
+    
+    function init(address owner) external initializer {
+        OwnableStorage.layout().owner = owner;
     }
 
-    function changeAdmin(address newAdmin) external {
-        _validateCaller();
-        _changeAdmin(newAdmin);
-    }
-
-    function upgradeBeaconToAndCall(
-        address beacon,
-        bytes memory data,
-        bool forceCall
+    function validateAndCall(
+        bytes calldata txData,
+        address refundReceiver,
+        uint256 reward, // reward to gas payer
+        uint256 nonce,
+        bytes calldata signature
     ) external {
-        _validateCaller();
-        _upgradeBeaconToAndCall(beacon, data, forceCall);
+        uint256 gasUsed = gasleft();
+        require(msg.sender != address(this), "HEXLA007");
+        require(s.nonce++ == nonce, "HEXLA008");
+        bytes32 request = keccak256(abi.encode(txData, refundReceiver, reward, nonce));
+        _validateSignature(request, signature);
+        address(this).functionCall(txData, "HEXLA009");
+        // payment = 21000 gas
+        // emit = 1200 gas = 375(log) + 375(topic) + 32 * 8(logData) + 64 * 3(memory)
+        // buffer = 300 gas
+        gasUsed = (gasUsed + 22500 + reward - gasleft()) * tx.gasprice;
+        refundReceiver.functionCallWithValue("", gasUsed, "HEXLA010");
+        emit GasPayment(request, gasUsed);
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external virtual {
-        _validateCaller();
-        _execBatch(ops);
-    }
-
-    function exec(BasicUserOp calldata op) external virtual {
-        _validateCaller();
-        _exec(op);
-    }
-
-    function _validateCaller() internal virtual {
-        require(msg.sender == _getAdmin(), "HEXLA012");
+    function _validateCaller() internal view override {
+        require(msg.sender == owner() || msg.sender == address(this), "HEXLA011");
     }
 }
