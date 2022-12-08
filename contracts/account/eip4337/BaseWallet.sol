@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.4;
 
-import "../../interfaces/IERC4337Wallet.sol";
+import "./IERC4337Wallet.sol";
 import "./UserOperation.sol";
 
 /* solhint-disable avoid-low-level-calls */

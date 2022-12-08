@@ -7,7 +7,7 @@ import "@solidstate/contracts/access/ownable/SafeOwnable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
-import "../interfaces/IHexlink.sol";
+import "./IHexlink.sol";
 import "../auth/HexlinkAuth.sol";
 
 contract Hexlink is IHexlink, HexlinkAuth, SafeOwnable {
