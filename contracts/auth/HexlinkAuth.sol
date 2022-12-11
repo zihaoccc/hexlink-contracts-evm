@@ -5,8 +5,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "../utils/Auth.sol";
-import "../interfaces/IIdentityOracleRegistry.sol";
+import "./AuthProof.sol";
+import "./IIdentityOracleRegistry.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;
@@ -54,7 +54,9 @@ abstract contract HexlinkAuth {
         HexlinkAuthStorage.layout().oracle = registry;
     }
 
-    function authConfig(AuthProof memory /* proof */) public pure returns (AuthConfig memory) {
+    function authConfig(
+        AuthProof memory /* proof */
+    ) public pure returns (AuthConfig memory) {
         return AuthConfig(259200, 3600); // (3 days, 1 hour)
     }
 

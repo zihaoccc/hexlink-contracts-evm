@@ -124,9 +124,12 @@ contract Hexlink is IHexlink, HexlinkAuth, SafeOwnable {
         bytes memory data
     ) private view returns (RequestInfo memory) {
         AccountState memory state = states[name];
+        bytes32 requestId = keccak256(
+            abi.encode(name, msg.sig, data, address(this), block.chainid, state.nonce)
+        );
         return RequestInfo(
             name,
-            keccak256(abi.encode(msg.sig, data, address(this), block.chainid, state.nonce)),
+            requestId,
             _addressOfName(name, state.account),
             state.nonce
         );

@@ -23,9 +23,8 @@ contract SimpleIdentityOracle is IERC1271, Ownable2Step {
 
     mapping(address => bool) validators_;
 
-    constructor(address owner, address[] memory validators, bool[] memory registered) {
+    constructor(address owner) {
         _transferOwnership(owner);
-        setValidators(validators, registered);
     }
 
     function isRegistered(address validator) external view returns (bool) {

@@ -24,14 +24,8 @@ contract IdentityOracleRegsitry is IIdentityOracleRegistry, Ownable {
 
     mapping(uint256 => address) private oracles_;
 
-    constructor(
-        address owner,
-        uint128[] memory identityTypes,
-        uint128[] memory authTypes,
-        address[] memory oracles
-    ) {
+    constructor(address owner) {
         _transferOwnership(owner);
-        setOracles(identityTypes, authTypes, oracles);
     }
 
     function oracle(
