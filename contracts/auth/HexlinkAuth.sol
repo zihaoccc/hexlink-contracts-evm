@@ -131,9 +131,11 @@ abstract contract HexlinkAuth {
     }
 
     function _oracle(AuthProof calldata proof) private view returns(address) {
+        OracleSelector memory selector
+            = OracleSelector(proof.identityType, proof.authType);
         address oracle = IIdentityOracleRegistry(
             HexlinkAuthStorage.layout().oracle
-        ).oracle(proof.identityType, proof.authType);
+        ).oracle(selector);
         require(oracle != address(0), "HEXL017");
         return oracle;
     }

@@ -33,8 +33,8 @@ contract AccountSimple is AccountBase, Initializable {
         address(this).functionCall(txData, "HEXLA009");
         // payment = 21000 gas
         // emit = 1200 gas = 375(log) + 375(topic) + 32 * 8(logData) + 64 * 3(memory)
-        // buffer = 300 gas
-        gasUsed = (gasUsed + 22500 + reward - gasleft()) * tx.gasprice;
+        // buffer = 700 gas
+        gasUsed = (gasUsed + 23000 + reward - gasleft()) * tx.gasprice;
         refundReceiver.functionCallWithValue("", gasUsed, "HEXLA010");
         emit GasPayment(request, gasUsed);
     }

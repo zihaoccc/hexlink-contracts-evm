@@ -10,60 +10,59 @@ import "./IIdentityOracleRegistry.sol";
 contract IdentityOracleRegsitry is IIdentityOracleRegistry, Ownable {
     using Address for address;
 
-    event SetOracle(
-        uint128 indexed identityType,
-        uint128 indexed authType,
+    event Register(
+        OracleSelector selector,
         address oracle
     );
 
-    event SetOracles(
-        uint128[] indexed identityTypes,
-        uint128[] indexed authTypes,
+    event RegisterBatch(
+        OracleSelector[] selectors,
         address[] oracles
     );
 
-    mapping(uint256 => address) private oracles_;
+    mapping(bytes32 => address) private oracles_;
 
     constructor(address owner) {
         _transferOwnership(owner);
     }
 
     function oracle(
-        uint128 identityType,
-        uint128 authType
+        OracleSelector calldata selector
     ) public view override returns (address) {
-        return oracles_[identityType << 128 + authType];
+        return oracles_[_lookUpKey(selector)];
     }
 
-    function setOracle(
-        uint128 identityType,
-        uint128 authType,
+    function register(
+        OracleSelector calldata selector,
         address _oracle
     ) external onlyOwner {
-        _setOracle(identityType, authType, _oracle);
-        emit SetOracle(identityType, authType, _oracle);
+        _register(selector, _oracle);
+        emit Register(selector, _oracle);
     }
 
-    function setOracles(
-        uint128[] memory identityTypes,
-        uint128[] memory authTypes,
+    function registerBatch(
+        OracleSelector[] calldata selectors,
         address[] memory oracles
     ) public onlyOwner {
-        require(identityTypes.length == oracles.length
-            && authTypes.length == oracles.length, "HEXL001");
+        require(selectors.length == oracles.length, "HEXL001");
         for (uint256 i = 0; i < oracles.length; i++) {
-            _setOracle(identityTypes[i], authTypes[i], oracles[i]);
+            _register(selectors[i], oracles[i]);
         }
-        emit SetOracles(identityTypes, authTypes, oracles);
+        emit RegisterBatch(selectors, oracles);
     }
 
-    function _setOracle(
-        uint128 identityType,
-        uint128 authType,
+    function _register(
+        OracleSelector calldata selector,
         address _oracle
     ) internal {
-        require(identityType != 0 && _oracle != address(0), "HEXL002");
+        require(selector.identityType != 0 && _oracle != address(0), "HEXL002");
         require(_oracle.isContract(), "HEXL013");
-        oracles_[identityType << 128 + authType] = _oracle;
+        oracles_[_lookUpKey(selector)] = _oracle;
+    }
+
+    function _lookUpKey(
+        OracleSelector calldata selector
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(selector));
     }
 }

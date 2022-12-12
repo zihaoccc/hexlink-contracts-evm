@@ -10,8 +10,8 @@ contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
     event SetEntryPoint(address indexed newEntryPoint);
 
     struct AppStorage {
-        address entryPoint;
         uint256 nonce;
+        address entryPoint;
     }
     AppStorage internal s;
 
@@ -44,6 +44,6 @@ contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
     }
 
     function _validateCaller() internal override {
-        require(msg.sender == entrypoint() || msg.sender == owner(), "HEXLA013");
+        require(msg.sender == s.entrypoint || msg.sender == owner(), "HEXLA013");
     }
 }

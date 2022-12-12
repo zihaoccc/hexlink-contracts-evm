@@ -3,14 +3,14 @@
 
 pragma solidity ^0.8.0;
 
-import "@solidstate/contracts/access/ownable/SafeOwnable.sol";
+import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "./IHexlink.sol";
 import "../auth/HexlinkAuth.sol";
 
-contract Hexlink is IHexlink, HexlinkAuth, SafeOwnable {
+contract Hexlink is IHexlink, HexlinkAuth, Ownable {
     struct AccountState {
         address account;
         uint96 nonce;

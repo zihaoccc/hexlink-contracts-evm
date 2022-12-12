@@ -3,53 +3,66 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable2Step.sol";
+import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "../utils/Initializable.sol";
 
-contract SimpleIdentityOracle is IERC1271, Ownable2Step {
+contract SimpleIdentityOracle is IERC1271, Ownable, Initializable {
     using ECDSA for bytes32;
 
-    event SetValidator(
+    event Register(
         address indexed validator,
         bool registered
     );
 
-    event SetValidators(
+    event RegisterBatch(
         address[] indexed validators,
         bool[] registered
     );
 
+    event Clone(address indexed cloned);
+
     mapping(address => bool) validators_;
 
     constructor(address owner) {
-        _transferOwnership(owner);
+        init(owner);
+    }
+
+    function clone(bytes32 salt, address owner) external {
+        address oracle = Clones.cloneDeterministic(address(this), salt);
+        SimpleIdentityOracle(oracle).init(owner);
+        emit Clone(oracle);
+    }
+
+    function init(address owner) public initializer {
+        OwnableStorage.layout().owner = owner;
     }
 
     function isRegistered(address validator) external view returns (bool) {
         return validators_[validator];
     }
 
-    function setValidator(
+    function register(
         address validator,
         bool registered
     ) external onlyOwner {
-        _setValidator(validator, registered);
-        emit SetValidator(validator, registered);
+        _register(validator, registered);
+        emit Register(validator, registered);
     }
 
-    function setValidators(
+    function registerBatch(
         address[] memory validators,
         bool[] memory registered
     ) public onlyOwner {
         for (uint i = 0; i < validators.length; i++) {
-            _setValidator(validators[i], registered[i]);
+            _register(validators[i], registered[i]);
         }
-        emit SetValidators(validators, registered);
+        emit RegisterBatch(validators, registered);
     }
 
-    function _setValidator(
+    function _register(
         address validator,
         bool registered
     ) internal {

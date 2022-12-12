@@ -6,7 +6,7 @@ import "@typechain/hardhat";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
-import "./tasks/hexlink";
+import "./tasks/account";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")

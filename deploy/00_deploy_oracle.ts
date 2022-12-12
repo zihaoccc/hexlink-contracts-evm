@@ -1,29 +1,27 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import {DeployFunction} from "hardhat-deploy/types";
-import { ethers } from "ethers";
+import { getAdmin } from "../utils/amdin";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  const adminMap = JSON.parse((process.env.HEXLINK_ADMIN!));
-  const admin = ethers.utils.getAddress(adminMap[hre.network.name]) || deployer;
-
-  const oracle = await deploy("SimpleIdentityOracle", {
+  const admin = getAdmin(hre);
+  await deploy("SimpleIdentityOracle", {
     from: deployer,
-    args: [admin, [], []],
+    args: [admin],
     log: true,
     autoMine: true,
   });
 
   await deploy("IdentityOracleRegistry", {
     from: deployer,
-    args: [admin, [1, 4], [2, 2], [oracle.address, oracle.address]],
+    args: [admin],
     log: true,
     autoMine: true,
   });
 };
 
 export default func;
-func.tags = ["HEXL", "TEST"];
+func.tags = ["HEXL", "ORACLE", "TEST"];

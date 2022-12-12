@@ -1,6 +1,6 @@
-import {HardhatRuntimeEnvironment} from "hardhat/types";
-import {DeployFunction} from "hardhat-deploy/types";
-import { ethers } from "ethers";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { DeployFunction } from "hardhat-deploy/types";
+import { getAdmin } from "../utils/amdin";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
@@ -8,7 +8,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployer} = await getNamedAccounts();
 
   // deploy account implementation
-  const accountImpl = await deploy("AccountSimpleV2", {
+  const accountImpl = await deploy("AccountSimple", {
     from: deployer,
     args: [],
     log: true,
@@ -16,8 +16,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy account beacon contract
-  const adminMap = JSON.parse((process.env.HEXLINK_ADMIN!));
-  const admin = ethers.utils.getAddress(adminMap[hre.network.name]) || deployer;
+  const admin = getAdmin(hre);
   const beacon = await deploy("AccountBeacon", {
     from: deployer,
     args: [accountImpl.address, admin],
@@ -26,29 +25,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy beacon proxy contract
-  const accountProxy = await deploy("AccountProxy", {
+  await deploy("AccountProxy", {
     from: deployer,
     args: [beacon.address],
-    log: true,
-    autoMine: true,
-  });
-
-  // deploy hexlink impl
-  const hexlinkImpl = await deploy("HexlinkUpgradable", {
-    from: deployer,
-    args: [accountProxy.address],
-    log: true,
-    autoMine: true,
-  });
-
-  // deploy hexlink proxy
-  const hexlink = await deploy("ERC1967Proxy", {
-    from: deployer,
-    args: [hexlinkImpl.address],
     log: true,
     autoMine: true,
   });
 };
 
 export default func;
-func.tags = ["HEXL", "TEST"];
+func.tags = ["HEXL", "ACCOUNT", "TEST"];
