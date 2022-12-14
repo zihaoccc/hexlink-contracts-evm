@@ -1,29 +1,35 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ethers } from "ethers";
-import { getAdmin } from "../utils/amdin";
+import { ethers, Contract } from "ethers";
 
-const genNameHash = function(name: string) {
+const genNameHash = function(name: string) : string {
     return ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(name)
     );
 };
 
-const getAccountProxy = async function(hre: HardhatRuntimeEnvironment) {
+const getAccountProxy = async function(
+    hre: HardhatRuntimeEnvironment
+): Promise<Contract> {
     const {ethers, deployments} = hre;
     const deployment = await deployments.get("AccountProxy");
-    return await ethers.getContractAt("AccountProxy", deployment.address);
+    return await hre.ethers.getContractAt(
+        "AccountProxy",
+        deployment.address
+    );
 };
 
-const getHexlink = async function(hre: HardhatRuntimeEnvironment, hexlink: string | null) {
+const getHexlink = async function(
+    hre: HardhatRuntimeEnvironment,
+    hexlink: string | null
+): Promise<Contract> {
     if (!hexlink) {
         const hexlinkMap = JSON.parse((process.env.HEXLINK_ADDRESS!));
-        hexlink = adminMap[hre.network.name];
-        assert(hexlink, "Hexlink contract not found");
+        hexlink = hexlinkMap[hre.network.name];
     }
-    return await ethers.getContractAt(
+    return await hre.ethers.getContractAt(
         "Hexlink",
-        ethers.utils.getAddress(hexlink)
+        ethers.utils.getAddress(hexlink!)
     );
 }
 
@@ -31,7 +37,7 @@ const getDefaultAddress = async function(
     hexlink: string,
     name: string,
     hre: HardhatRuntimeEnvironment
-) {
+): Promise<string> {
     const artifact = await hre.artifacts.readArtifact("AccountProxy");
     const initCodeHash = ethers.utils.keccak256(artifact.bytecode);
     return ethers.utils.getCreate2Address(
@@ -59,14 +65,14 @@ task("accountBase", "Prints account base address")
 
 task("oracleRegistry", "get oracle registry")
     .addOptionalParam("hexlink")
-    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre, args.hexlink);
         return await hexlink.oracleRegistry();
     });
 
 task("authConfig", "get oracle registry")
     .addOptionalParam("hexlink")
-    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre, args.hexlink);
         return await hexlink.authConfig();
     });
@@ -106,7 +112,7 @@ task("bumpNonce", "bump nonce for a name")
         return await hexlink.connect(deployer).nonce(nameHash);
     });
 
-task("deploy", "deploy a new account per given email")
+task("deployAccount", "deploy a new account per given email")
     .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("owner")
@@ -116,18 +122,20 @@ task("deploy", "deploy a new account per given email")
         const hexlink = await getHexlink(hre, args.hexlink);
 
         const nameHash = genNameHash(args.name);
-        const initData = hexlink.interface.encodeFunctionData("init", [owner]);
+        const initData = hexlink.interface.encodeFunctionData(
+            "init", [args.owner]
+        );
         const tx = await hexlink.connect(deployer).deploy(
             nameHash,
             initData,
             args.proof
         );
         await processTx(tx);
-        const account = getDefaultAddress(hexlink.address, name);
+        const account = getDefaultAddress(hexlink.address, args.name, hre);
         return account;
     });
 
-task("reset", "reset the account address")
+task("resetAccount", "reset the account address")
     .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("account")

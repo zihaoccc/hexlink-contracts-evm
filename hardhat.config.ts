@@ -6,7 +6,11 @@ import "@typechain/hardhat";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "hardhat-deploy";
+
 import "./tasks/account";
+import "./tasks/nft";
+import "./tasks/hexlink";
+import "./tasks/oracle";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")
@@ -27,7 +31,7 @@ task("accounts", "Prints the list of accounts", async (_taskArgs, hre) => {
 });
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.4",
+  solidity: "0.8.8",
   networks: {
     goerli: {
       url: process.env.HARDHAT_GOERLI_URL || "",

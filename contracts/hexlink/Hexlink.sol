@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Hexlink Contracts
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.8;
 
 import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";

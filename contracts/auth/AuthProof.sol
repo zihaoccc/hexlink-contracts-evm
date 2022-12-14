@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
 /*
  * The request id is a hash over the request, contract processing

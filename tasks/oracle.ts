@@ -1,17 +1,21 @@
 import {task} from "hardhat/config";
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import { ethers, Contract } from "ethers";
-import { getAdmin } from "../utils/amdin";
 
 interface OracleSelector {
     identityType: number;
     authType: number;
 }
 
-async function createOracle(oracle: Contract, name: string, admin: string) {
+async function createOracle(
+    oracle: Contract,
+    name: string,
+    hre: HardhatRuntimeEnvironment
+): Promise<string> {
+    const { deployer } = await hre.getNamedAccounts();
     const tx = await oracle.clone(
         ethers.utils.keccak256("name"),
-        admin
+        [deployer]
     );
     const receipt = await tx.wait();
     const events = receipt.logs.map((log: any) => oracle.interface.parseLog(log));
@@ -40,9 +44,8 @@ const getRegistry = async function(hre: HardhatRuntimeEnvironment) {
 task("init_oracle", "setup email otp and twitter oauth oracle")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const oracleImpl = await getOracleImpl(hre);
-        const admin = getAdmin(hre);
-        const emailOtp = createOracle(oracleImpl, "EMAIL_OTP", admin)
-        const twitterOAuth = createOracle(oracleImpl, "TWITTER_OAUTH", admin);        
+        const emailOtp = createOracle(oracleImpl, "EMAIL_OTP", hre)
+        const twitterOAuth = createOracle(oracleImpl, "TWITTER_OAUTH", hre);        
         const registry = await getRegistry(hre);
         await registry.registerBatch([
             {identityType: 1, authType: 1}, // email otp 

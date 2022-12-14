@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Hexlink Contracts
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "@openzeppelin/contracts/proxy/Proxy.sol";
