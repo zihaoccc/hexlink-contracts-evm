@@ -7,16 +7,10 @@ import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "./IAccount.sol";
 
-abstract contract AccountBase is IERC1271, Ownable {
+abstract contract AccountBase is IERC1271, IAccount, Ownable {
     using ECDSA for bytes32;
-
-    struct BasicUserOp {
-        address to;
-        uint256 value;
-        bytes callData;
-        uint256 callGasLimit;
-    }
 
     using Address for address;
 
@@ -35,7 +29,7 @@ abstract contract AccountBase is IERC1271, Ownable {
         return IERC1271.isValidSignature.selector;
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external {
+    function execBatch(BasicUserOp[] calldata ops) external override {
         _validateCaller();
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
@@ -43,7 +37,7 @@ abstract contract AccountBase is IERC1271, Ownable {
         }
     }
 
-    function exec(BasicUserOp calldata op) external {
+    function exec(BasicUserOp calldata op) external override {
         _validateCaller();
         _exec(op);
     }
@@ -52,7 +46,10 @@ abstract contract AccountBase is IERC1271, Ownable {
         (
             bool success,
             bytes memory data
-        ) = op.to.call{value: op.value, gas: op.callGasLimit}(op.callData);
+        ) = op.to.call{
+            value: op.value,
+            gas: op.callGasLimit == 0 ? gasleft() : op.callGasLimit
+        }(op.callData);
         op.to.verifyCallResultFromTarget(success, data, "HEXLA001");
     }
 

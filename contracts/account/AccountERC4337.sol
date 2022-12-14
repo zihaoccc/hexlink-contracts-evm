@@ -33,17 +33,22 @@ contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
         emit SetEntryPoint(newEntryPoint);
     }
 
-    function _validateAndUpdateNonce(UserOperation calldata userOp) internal override virtual {
+    function _validateAndUpdateNonce(
+        UserOperation calldata userOp
+    ) internal override virtual {
         require(s.nonce++ == userOp.nonce, "HEXLA005");
     }
 
-    function _validateSignature(UserOperation calldata userOp, bytes32 requestId, address)
-    internal override returns (uint256) {
+    function _validateSignature(
+        UserOperation calldata userOp, 
+        bytes32 requestId, address
+    ) internal view override returns (uint256) {
         _validateSignature(requestId, userOp.signature);
         return 0;
     }
 
-    function _validateCaller() internal override {
-        require(msg.sender == s.entrypoint || msg.sender == owner(), "HEXLA013");
+    function _validateCaller() internal view override {
+        require(msg.sender == s.entryPoint
+            || msg.sender == owner(), "HEXLA013");
     }
 }
