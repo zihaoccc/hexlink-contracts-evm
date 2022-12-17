@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { getAdmin } from "../utils/amdin";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
@@ -16,7 +15,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy account beacon contract
-  const admin = getAdmin(hre);
+  const admin = await hre.run("get_admin", {})
   const beacon = await deploy("AccountBeacon", {
     from: deployer,
     args: [accountImpl.address, admin],

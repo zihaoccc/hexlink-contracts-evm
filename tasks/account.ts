@@ -6,7 +6,7 @@ interface UserOp {
   to: string;
   value: BigNumber;
   callData: string | [];
-  callGasLimit: Number;
+  callGasLimit: BigNumber;
 }
 
 const genERC20TransferTxData = async function(
@@ -41,14 +41,14 @@ task("send", "send ETH or token")
           callData: await genERC20TransferTxData(
             hre, receiver, args.amount
           ),
-          callGasLimit: 0
+          callGasLimit: BigNumber.from(0)
         }
       } else {
         op = {
           to: receiver,
           value: ethers.utils.parseEther(args.amount),
           callData: [],
-          callGasLimit: 0
+          callGasLimit: BigNumber.from(0)
         }
       }
       const tx = await account.connect(deployer).exec(op);
@@ -71,7 +71,7 @@ task("exec", "execute abiratry transaction")
         to: args.to,
         value: args.value || BigNumber.from(0),
         callData: args.callData,
-        callGasLimit: args.gasLimit || 0
+        callGasLimit: args.gasLimit || BigNumber.from(0)
       });
       return tx.hash;
     });

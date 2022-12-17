@@ -73,5 +73,5 @@ task("register_validator", "register validator at oracle contract")
     .addParam("validator")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const oracle = await getOracle(ethers.utils.getAddress(args.oracle), hre);
-        await oracle.regsiter(ethers.utils.getAddress(args.validator), true);
+        await oracle.register(ethers.utils.getAddress(args.validator), true);
     });

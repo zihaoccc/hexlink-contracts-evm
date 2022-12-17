@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IIdentityOracleRegistry.sol";
 
-contract IdentityOracleRegsitry is IIdentityOracleRegistry, Ownable {
+contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
     using Address for address;
 
     event Register(

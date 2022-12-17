@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "../utils/Initializable.sol";
 import "./Hexlink.sol";
 
-contract HexlinkUpgradable is Hexlink, Initializable, UUPSUpgradeable {
+contract HexlinkUpgradeable is Hexlink, Initializable, UUPSUpgradeable {
     constructor(address accountBase) Hexlink(accountBase) { }
 
     function init(

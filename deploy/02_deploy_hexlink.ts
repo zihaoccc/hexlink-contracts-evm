@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { getAdmin } from "../utils/amdin";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
@@ -9,7 +8,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   // deploy hexlink impl
   const accountProxy = await deployments.get("AccountProxy");
-  const hexlinkImpl = await deploy("HexlinkUpgradable", {
+  const hexlinkImpl = await deploy("HexlinkUpgradeable", {
     from: deployer,
     args: [accountProxy.address],
     log: true,
@@ -17,9 +16,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy hexlink proxy
-  const hexlinkDeployment = await deploy("ERC1967Proxy", {
+  const hexlinkDeployment = await deploy("HexlinkProxy", {
     from: deployer,
-    args: [hexlinkImpl.address, ""],
+    args: [hexlinkImpl.address, []],
     log: true,
     autoMine: true,
   });
@@ -28,7 +27,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     "HexlinkUpgradeable",
     hexlinkDeployment.address
   );
-  const admin = getAdmin(hre);
+  const admin = await hre.run("get_admin", {})
   const oracleRegistry = await deployments.get(
     "IdentityOracleRegistry"
   );

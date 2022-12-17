@@ -1,5 +1,10 @@
 import {expect} from "chai";
-import {ethers, deployments, artifacts} from "hardhat";
+import {
+  run,
+  ethers,
+  deployments,
+  getNamedAccounts,
+} from "hardhat";
 
 const sender = "mailto:sender@gmail.com";
 const receiver = "mailto:receiver@gmail.com";
@@ -12,15 +17,15 @@ const getContract = async function(name: string) {
 describe("IdentityOracle", function() {
   beforeEach(async function() {
     const { validator } = await getNamedAccounts();
-    await deployments.fixture(["TEST"]);
-    const [emailOtp, twitterOAuth] = await hre.run("init_oracle", {});
-    await hre.run(
+    await deployments.fixture(["ORACLE"]);
+    const [emailOtp, twitterOAuth] = await run("init_oracle", {});
+    await run(
         "register_validator",
-        {oracle: emailOtp, validator: validator.address}
+        {oracle: emailOtp, validator}
     );
-    await hre.run(
+    await run(
         "register_validator",
-        {oracle: twitterOAuth, validator: validator.address}
+        {oracle: twitterOAuth, validator}
     );
   });
 
@@ -33,7 +38,7 @@ describe("IdentityOracle", function() {
         await registry.oracle({identityType: 1, authType: 1})
     );
     expect(
-        await emailOtp.isRegistered(validator.address)
+        await emailOtp.isRegistered(validator)
     ).to.be.true;
 
     const twitterOAuth = await ethers.getContractAt(
@@ -41,12 +46,12 @@ describe("IdentityOracle", function() {
         await registry.oracle({identityType: 4, authType: 2})
     );
     expect(
-        await twitterOAuth.isRegistered(validator.address)
+        await twitterOAuth.isRegistered(validator)
     ).to.be.true;
   });
 
   it("signature check", async function() {
-    const { validator } = await getNamedAccounts();
+    const validator = await ethers.getNamedSigner("validator");
     const registry = await getContract("IdentityOracleRegistry");
     const oracle = await ethers.getContractAt(
         "IERC1721",
@@ -61,6 +66,6 @@ describe("IdentityOracle", function() {
     );
     expect(
         await oracle.isValidSignature(encodedSig)
-    ).to.eq(oracle.interface.getSigHash("isValidSignature"));
+    ).to.eq(oracle.interface.getSighash("isValidSignature"));
   });
 });
