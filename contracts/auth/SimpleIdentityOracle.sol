@@ -79,7 +79,10 @@ contract SimpleIdentityOracle is IERC1271, Ownable, Initializable {
             bytes memory sig
         ) = abi.decode(signature, (address, bytes));
         require(validators_[validator], "IO002");
-        require(validator == message.recover(sig), "IO003");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", message)
+        );
+        require(validator == messageHash.recover(sig), "IO003");
         return IERC1271.isValidSignature.selector;
     }
 }

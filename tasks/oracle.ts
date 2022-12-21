@@ -14,13 +14,13 @@ async function createOracle(
 ): Promise<string> {
     const { deployer } = await hre.getNamedAccounts();
     const tx = await oracle.clone(
-        ethers.utils.keccak256("name"),
-        [deployer]
+        ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
+        deployer
     );
     const receipt = await tx.wait();
     const events = receipt.logs.map((log: any) => oracle.interface.parseLog(log));
     const event = events.find((e: any) => e.name == "Clone");
-    return event.args.account;
+    return event.args.cloned;
 }
 
 const getOracleImpl = async function(hre: HardhatRuntimeEnvironment) {
@@ -44,8 +44,8 @@ const getRegistry = async function(hre: HardhatRuntimeEnvironment) {
 task("init_oracle", "setup email otp and twitter oauth oracle")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const oracleImpl = await getOracleImpl(hre);
-        const emailOtp = createOracle(oracleImpl, "EMAIL_OTP", hre)
-        const twitterOAuth = createOracle(oracleImpl, "TWITTER_OAUTH", hre);        
+        const emailOtp = await createOracle(oracleImpl, "EMAIL_OTP", hre);
+        const twitterOAuth = await createOracle(oracleImpl, "TWITTER_OAUTH", hre);
         const registry = await getRegistry(hre);
         await registry.registerBatch([
             {identityType: 1, authType: 1}, // email otp 

@@ -54,18 +54,22 @@ describe("IdentityOracle", function() {
     const validator = await ethers.getNamedSigner("validator");
     const registry = await getContract("IdentityOracleRegistry");
     const oracle = await ethers.getContractAt(
-        "IERC1721",
+        "IERC1271",
         await registry.oracle({identityType: 1, authType: 1})
     );
 
-    const message = ethers.utils.keccak256("message");
-    const signature = await validator.signMessage(message);
+    const message = ethers.utils.keccak256(
+      ethers.utils.toUtf8Bytes("message")
+    );
+    const signature = await validator.signMessage(
+        ethers.utils.arrayify(message)
+    );
     const encodedSig = ethers.utils.defaultAbiCoder.encode(
         ["address", "bytes"],
         [validator.address, signature]
     );
     expect(
-        await oracle.isValidSignature(encodedSig)
+        await oracle.isValidSignature(message, encodedSig)
     ).to.eq(oracle.interface.getSighash("isValidSignature"));
   });
 });
