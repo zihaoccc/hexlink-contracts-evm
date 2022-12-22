@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {ethers, deployments, artifacts} from "hardhat";
+import {ethers, deployments, artifacts, run} from "hardhat";
 import { Contract } from "ethers";
 
 const sender = "mailto:sender@gmail.com";
@@ -79,18 +79,13 @@ describe("Hexlink Account", function() {
     expect(await token.balanceOf(account.address)).to.eq(10000);
 
     // send tokens
-    const artifact = await deployments.getArtifact("HexlinkToken");
-    const iface = new ethers.utils.Interface(artifact.abi);
-    const txData = iface.encodeFunctionData(
-        "transfer",
-        [deployer.address, 5000]
-    );
     expect(await token.balanceOf(account.address)).to.eq(10000);
-    await account.connect(deployer).exec({
-      to: token.address,
-      value: 0,
-      callData: txData,
-      callGasLimit: 65000
+    await run("send", {
+      sender,
+      receiver,
+      token: token.address,
+      hexlink: accountDeployer.address,
+      amount: "5000"
     });
     expect(await token.balanceOf(account.address)).to.eq(5000);
   });
@@ -133,16 +128,18 @@ describe("Hexlink Account", function() {
     ).to.eq(ethers.utils.parseEther("2.0"));
 
     // send ETH
-    const receiver = ethers.Wallet.createRandom()
-    await account.connect(deployer).exec({
-      to: receiver.address,
-      value: ethers.utils.parseEther("0.5"),
-      callData: [],
-      callGasLimit: 65000
+    await run("send", {
+      sender,
+      receiver,
+      hexlink: accountDeployer.address,
+      amount: ethers.utils.parseEther("0.5").toHexString()
     });
+    const receiverAddr = await accountDeployer.addressOfName(
+      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(receiver))
+    );
     expect(
-      await ethers.provider.getBalance(receiver.address)
-    ).to.eq(ethers.utils.parseEther("0.5"));
+      await ethers.provider.getBalance(receiverAddr)
+    ).to.eq(ethers.utils.parseEther("0.5").toHexString());
   });
 
   it("Should hold and transfer ERC1155 successfully", async function() {
@@ -189,11 +186,11 @@ describe("Hexlink Account", function() {
         "safeTransferFrom",
         [senderAddr, deployer.address, 1, 10, []]
     );
-    await account.connect(deployer).exec({
+    await run("exec", {
+      account: account.address,
       to: erc1155.address,
-      value: 0,
       callData: txData,
-      callGasLimit: 65000
+      hexlink: accountDeployer.address
     });
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });

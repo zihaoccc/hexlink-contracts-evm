@@ -18,7 +18,7 @@ const genERC20TransferTxData = async function(
   const iface = new ethers.utils.Interface(artifact.abi);
   return iface.encodeFunctionData(
       "transfer",
-      [receiver, ethers.utils.parseEther(amount)]
+      [receiver, amount]
   );
 }
 
@@ -29,7 +29,7 @@ task("send", "send ETH or token")
     .addOptionalParam("hexlink", "the hexlink contract for addres look up")
     .addParam("amount", "amount of ETH/Token to send")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-      const { deployer } = await hre.getNamedAccounts();
+      const { deployer } = await hre.ethers.getNamedSigners();
       const sender = await hre.run("account", {name: args.sender, hexlink: args.hexlink});
       const receiver = await hre.run("account", {name: args.receiver, hexlink: args.hexlink});
       const account = await hre.ethers.getContractAt("IAccount", sender);
@@ -47,7 +47,7 @@ task("send", "send ETH or token")
       } else {
         op = {
           to: receiver,
-          value: ethers.utils.parseEther(args.amount),
+          value: args.amount,
           callData: [],
           callGasLimit: BigNumber.from(0)
         }
@@ -59,11 +59,11 @@ task("send", "send ETH or token")
 task("exec", "execute abiratry transaction")
     .addParam("account", "account address to exectute")
     .addParam("to")
-    .addParam("value")
     .addParam("callData")
+    .addOptionalParam("value")
     .addOptionalParam("gasLimit")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-      const { deployer } = await hre.getNamedAccounts();
+      const { deployer } = await hre.ethers.getNamedSigners();
       const account = await hre.ethers.getContractAt(
           "IAccount",
           ethers.utils.getAddress(args.account)
