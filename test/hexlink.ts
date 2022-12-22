@@ -1,8 +1,11 @@
 import {expect} from "chai";
 import {ethers, deployments, artifacts} from "hardhat";
 
-const sender = "mailto:sender@gmail.com";
-const receiver = "mailto:receiver@gmail.com";
+const namehash = function(name: string) {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(nameHash));
+}
+const sender = namehash("mailto:sender@gmail.com");
+const receiver = namehash("mailto:receiver@gmail.com");
 
 const getContract = async function(name: string) {
   const deployment = await deployments.get(name);
@@ -11,19 +14,16 @@ const getContract = async function(name: string) {
 
 describe("Hexlink", function() {
   beforeEach(async function() {
-    await deployments.fixture(["ORACLE", "ACCOUNT", "HEXLINK"]);
+    await deployments.fixture(["HEXL"]);
+    const { validator } = await getNamedAccounts();
+    await run("init_oracle", {validator});
   });
 
-  it("Should deploy account contract", async function() {
-    const admin = await getContract("Hexlink");
-    const [deployer] = await ethers.getSigners();
-    const base = await admin.accountBase();
-    const initCodeHash = ethers.utils.keccak256(ethers.utils.concat([
-      ethers.utils.arrayify("0x363d3d373d3d3d363d73"),
-      ethers.utils.arrayify(base),
-      ethers.utils.arrayify("0x5af43d82803e903d91602b57fd5bf3"),
-    ]));
-    const nameHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(sender));
+  it("Should deploy hexlink contract", async function() {
+    const hexlink = await getContract("HexlinkProxy");
+    const { deployer } = await ethers.getSigners();
+   
+    const nameHash = ;
 
     // deploy account contract
     expect(await admin.version(nameHash)).to.eq(0);

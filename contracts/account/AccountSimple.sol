@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.8;
 
+import "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import "./AccountBase.sol";
 import "../utils/Initializable.sol";
 

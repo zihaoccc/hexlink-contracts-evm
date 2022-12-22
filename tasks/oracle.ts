@@ -42,16 +42,26 @@ const getRegistry = async function(hre: HardhatRuntimeEnvironment) {
 };
 
 task("init_oracle", "setup email otp and twitter oauth oracle")
-    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
+    .addParam("validator")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const oracleImpl = await getOracleImpl(hre);
         const emailOtp = await createOracle(oracleImpl, "EMAIL_OTP", hre);
         const twitterOAuth = await createOracle(oracleImpl, "TWITTER_OAUTH", hre);
         const registry = await getRegistry(hre);
+        // register oracle
         await registry.registerBatch([
             {identityType: 1, authType: 1}, // email otp 
             {identityType: 4, authType: 2}, // twitter oauth
         ], [emailOtp, twitterOAuth]);
-        return [emailOtp, twitterOAuth];
+        // register validator
+        await run(
+            "register_validator",
+            {oracle: emailOtp, validator: args.validator}
+        );
+        await run(
+            "register_validator",
+            {oracle: twitterOAuth, validator: args.validator}
+        );
     });
 
 task("register_oracle", "register oracle contract for identity and auth type")

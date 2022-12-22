@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.8;
 
+import "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";

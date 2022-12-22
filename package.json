@@ -1,10 +1,12 @@
 {
   "name": "HexlinkContract",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
+    "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.8.0",
+    "@safe-global/safe-core-sdk": "^3.2.2",
+    "@solidstate/contracts": "^0.0.50",
     "@typechain/ethers-v5": "^7.2.0",
     "@typechain/hardhat": "^2.3.1",
     "@types/chai": "^4.3.3",
@@ -18,14 +20,13 @@
     "hardhat": "^2.10.2",
     "hardhat-contract-sizer": "^2.1.1",
     "hardhat-deploy": "^0.9.24",
+    "hardhat-deploy-ethers": "^0.3.0-beta.13",
     "hardhat-gas-reporter": "^1.0.8",
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "solhint": "^3.3.7",
     "solidity-coverage": "^0.7.21",
+    "ts-node": "^10.9.1",
     "typechain": "^5.2.0"
-  },
-  "dependencies": {
-    "@solidstate/contracts": "^0.0.48"
   }
 }

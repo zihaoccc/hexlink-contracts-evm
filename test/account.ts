@@ -2,8 +2,13 @@ import {expect} from "chai";
 import {ethers, deployments, artifacts, run} from "hardhat";
 import { Contract } from "ethers";
 
-const sender = "mailto:sender@gmail.com";
-const receiver = "mailto:receiver@gmail.com";
+const namehash = function(name: string) : string {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
+}
+const senderName = "mailto:sender@gmail.com";
+const sender = namehash(senderName);
+const receiverName = "mailto:receiver@gmail.com";
+const receiver = namehash(receiverName);
 
 const getContract = async function(name: string) : Promise<Contract> {
   const deployment = await deployments.get(name);
@@ -50,8 +55,7 @@ describe("Hexlink Account", function() {
     const { deployer } = await ethers.getNamedSigners();
     const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
-    const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(sender));
-    const accountAddr = await accountDeployer.addressOfName(salt);
+    const accountAddr = await accountDeployer.addressOfName(sender);
 
     // receive tokens before account created
     const token = await getContract("HexlinkToken");
@@ -63,7 +67,7 @@ describe("Hexlink Account", function() {
 
     // deploy account contract
     await expect(
-      accountDeployer.deploy(salt)
+      accountDeployer.deploy(sender)
     ).to.emit(accountDeployer, "Deploy").withArgs(accountAddr);
     const account = await ethers.getContractAt(
       "AccountSimple",
@@ -81,8 +85,8 @@ describe("Hexlink Account", function() {
     // send tokens
     expect(await token.balanceOf(account.address)).to.eq(10000);
     await run("send", {
-      sender,
-      receiver,
+      sender: senderName,
+      receiver: receiverName,
       token: token.address,
       hexlink: accountDeployer.address,
       amount: "5000"
@@ -94,8 +98,7 @@ describe("Hexlink Account", function() {
     const { deployer } = await ethers.getNamedSigners();
     const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
-    const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(sender));
-    const senderAddr = await accountDeployer.addressOfName(salt);
+    const senderAddr = await accountDeployer.addressOfName(sender);
 
     // receive eth before account created
     const tx1 = await deployer.sendTransaction({
@@ -109,7 +112,7 @@ describe("Hexlink Account", function() {
 
     // create new account contract
     await expect(
-      accountDeployer.deploy(salt)
+      accountDeployer.deploy(sender)
     ).to.emit(accountDeployer, "Deploy").withArgs(senderAddr);
     const account = await ethers.getContractAt(
       "AccountSimple",
@@ -129,14 +132,12 @@ describe("Hexlink Account", function() {
 
     // send ETH
     await run("send", {
-      sender,
-      receiver,
+      sender: senderName,
+      receiver: receiverName,
       hexlink: accountDeployer.address,
       amount: ethers.utils.parseEther("0.5").toHexString()
     });
-    const receiverAddr = await accountDeployer.addressOfName(
-      ethers.utils.keccak256(ethers.utils.toUtf8Bytes(receiver))
-    );
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
     expect(
       await ethers.provider.getBalance(receiverAddr)
     ).to.eq(ethers.utils.parseEther("0.5").toHexString());
@@ -148,8 +149,7 @@ describe("Hexlink Account", function() {
 
     const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
-    const salt = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(sender));
-    const senderAddr = await accountDeployer.addressOfName(salt);
+    const senderAddr = await accountDeployer.addressOfName(sender);
 
     // receive erc1155 before account created
     await expect(
@@ -162,7 +162,7 @@ describe("Hexlink Account", function() {
 
     // create new account contract
     await expect(
-      accountDeployer.deploy(salt)
+      accountDeployer.deploy(sender)
     ).to.emit(accountDeployer, "Deploy").withArgs(senderAddr);
     const account = await ethers.getContractAt(
       "AccountSimple",

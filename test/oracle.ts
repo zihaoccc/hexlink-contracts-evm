@@ -6,9 +6,6 @@ import {
   getNamedAccounts,
 } from "hardhat";
 
-const sender = "mailto:sender@gmail.com";
-const receiver = "mailto:receiver@gmail.com";
-
 const getContract = async function(name: string) {
   const deployment = await deployments.get(name);
   return await ethers.getContractAt(name, deployment.address);
@@ -16,17 +13,9 @@ const getContract = async function(name: string) {
 
 describe("IdentityOracle", function() {
   beforeEach(async function() {
-    const { validator } = await getNamedAccounts();
     await deployments.fixture(["ORACLE"]);
-    const [emailOtp, twitterOAuth] = await run("init_oracle", {});
-    await run(
-        "register_validator",
-        {oracle: emailOtp, validator}
-    );
-    await run(
-        "register_validator",
-        {oracle: twitterOAuth, validator}
-    );
+    const { validator } = await getNamedAccounts();
+    await run("init_oracle", {validator}); 
   });
 
   it("validator should be registered", async function() {
