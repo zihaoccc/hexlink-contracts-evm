@@ -26,11 +26,12 @@ task("send", "send ETH or token")
     .addParam("sender", "sender name")
     .addParam("receiver", "receiver name")
     .addOptionalParam("token", "token contract address, use ETH if not set")
-    .addParam("amount", "amount of ETH to send")
+    .addOptionalParam("hexlink", "the hexlink contract for addres look up")
+    .addParam("amount", "amount of ETH/Token to send")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
       const { deployer } = await hre.getNamedAccounts();
-      const sender = await hre.run("account", args.sender);
-      const receiver = await hre.run("account", args.receiver);
+      const sender = await hre.run("account", {name: args.sender, hexlink: args.hexlink});
+      const receiver = await hre.run("account", {name: args.receiver, hexlink: args.hexlink});
       const account = await hre.ethers.getContractAt("IAccount", sender);
   
       let op : UserOp;

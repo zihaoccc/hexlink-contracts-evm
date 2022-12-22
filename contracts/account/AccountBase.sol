@@ -13,8 +13,6 @@ import "./IAccount.sol";
 abstract contract AccountBase is IERC1271, IAccount, Ownable {
     using ECDSA for bytes32;
 
-    using Address for address;
-
     receive() external payable { }
 
     fallback(bytes calldata) external returns (bytes memory) {
@@ -51,7 +49,7 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
             value: op.value,
             gas: op.callGasLimit == 0 ? gasleft() : op.callGasLimit
         }(op.callData);
-        op.to.verifyCallResultFromTarget(success, data, "HEXLA001");
+        Address.verifyCallResult(success, data, "HEXLA001");
     }
 
     function _validateSignature(bytes32 message, bytes calldata signature) internal view {
