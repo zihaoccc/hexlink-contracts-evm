@@ -18,6 +18,7 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
 
     using Address for address;
 
+    event Deploy(bytes32 indexed name, address indexed account);
     event Reset(bytes32 indexed name, address indexed account);
 
     address public immutable accountBase;
@@ -62,6 +63,7 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
         address account = Clones.cloneDeterministic(accountBase, name);
         account.functionCall(txData);
         states[name].nonce = info.nonce + 1;
+        emit Deploy(name, account);
     }
 
     // reset name to account mapping when account is not initiated
@@ -125,7 +127,7 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
     ) private view returns (RequestInfo memory) {
         AccountState memory state = states[name];
         bytes32 requestId = keccak256(
-            abi.encode(name, msg.sig, data, address(this), block.chainid, state.nonce)
+            abi.encode(msg.sig, data, address(this), block.chainid, state.nonce)
         );
         return RequestInfo(
             name,

@@ -62,6 +62,9 @@ const config: HardhatUserConfig = {
     deploy: "deploy",
     deployments: "deployments",
   },
+  gasReporter: {
+    enabled: true
+  }
 };
 
 export default config;

@@ -10,8 +10,6 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 contract AccountProxy is Proxy {
     address immutable public beacon;
 
-    event NewAccount(bytes32 indexed name, address indexed account);
-
     constructor(address _beacon) {
         beacon = _beacon;
     }

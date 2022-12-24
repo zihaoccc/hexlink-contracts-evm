@@ -10,7 +10,7 @@ import "./IIdentityOracleRegistry.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;
-    uint128 identityType;
+    uint256 identityType;
 }
 
 struct RequestInfo {
