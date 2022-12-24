@@ -15,7 +15,7 @@ contract HexlinkUpgradeable is Hexlink, Initializable, UUPSUpgradeable {
         address owner,
         address oracleRegistry
     ) public initializer {
-        OwnableStorage.layout().owner = owner;
+        _transferOwnership(owner);
         _setOracleRegistry(oracleRegistry);
     }
 

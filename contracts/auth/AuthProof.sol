@@ -9,7 +9,7 @@ pragma solidity ^0.8.8;
  */
 struct AuthProof{
     uint256 issuedAt;
-    uint256 authType;
     uint256 identityType;
+    uint256 authType;
     bytes signature; // aggregated signature
 }

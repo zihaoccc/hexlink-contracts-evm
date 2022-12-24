@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.8;
 
-import "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import "./AccountBase.sol";
 import "../utils/Initializable.sol";
+import "hardhat/console.sol";
 
 contract AccountSimple is AccountBase, Initializable {
     using Address for address;
@@ -17,7 +17,7 @@ contract AccountSimple is AccountBase, Initializable {
     AppStorage internal s;
     
     function init(address owner) external initializer {
-        OwnableStorage.layout().owner = owner;
+        _transferOwnership(owner);
     }
 
     function validateAndCall(
