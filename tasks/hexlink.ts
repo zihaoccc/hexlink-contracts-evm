@@ -24,8 +24,12 @@ const getHexlink = async function(
     hexlink: string | null
 ): Promise<Contract> {
     if (!hexlink) {
-        const hexlinkMap = JSON.parse((process.env.HEXLINK_ADDRESS!));
-        hexlink = hexlinkMap[hre.network.name];
+        if (process.env.HEXLINK_ADDRESS) {
+            const hexlinkMap = JSON.parse(process.env.HEXLINK_ADDRESS);
+            hexlink = hexlinkMap[hre.network.name];
+        } else {
+            hexlink = hre.deployments.get("HexlinkProxy");
+        }
     }
     return await hre.ethers.getContractAt(
         "Hexlink",

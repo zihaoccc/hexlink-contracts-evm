@@ -2,13 +2,11 @@
 
 pragma solidity ^0.8.8;
 
-import "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import "./eip4337/BaseWallet.sol";
 import "./eip4337/UserOperation.sol";
 import "./AccountBase.sol";
-import "../utils/Initializable.sol";
 
-contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
+contract AccountERC4337 is AccountBase, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
 
     struct AppStorage {
@@ -17,8 +15,9 @@ contract AccountERC4337 is AccountBase, BaseWallet, Initializable {
     }
     AppStorage internal s;
 
-    function init(address owner, address _entryPoint) external initializer {
-        OwnableStorage.layout().owner = owner;
+    function init(address owner, address _entryPoint) external {
+        require(_owner() == address(0), "HEXL015");
+        _transferOwnership(owner);
         s.entryPoint = _entryPoint;
     }
 

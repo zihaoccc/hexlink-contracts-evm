@@ -11,8 +11,9 @@ import "hardhat-deploy-ethers";
 import "./tasks/account";
 import "./tasks/nft";
 import "./tasks/hexlink";
+import "./tasks/auth";
 import "./tasks/oracle";
-import "./tasks/utils"
+import "./tasks/utils";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")

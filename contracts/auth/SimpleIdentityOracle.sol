@@ -3,14 +3,12 @@
 
 pragma solidity ^0.8.8;
 
-import "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "../utils/Initializable.sol";
 
-contract SimpleIdentityOracle is IERC1271, Ownable, Initializable {
+contract SimpleIdentityOracle is IERC1271, Ownable {
     using ECDSA for bytes32;
 
     event Register(
@@ -28,7 +26,7 @@ contract SimpleIdentityOracle is IERC1271, Ownable, Initializable {
     mapping(address => bool) validators_;
 
     constructor(address owner) {
-        init(owner);
+        _transferOwnership(owner);
     }
 
     function clone(bytes32 salt, address owner) external {
@@ -37,8 +35,9 @@ contract SimpleIdentityOracle is IERC1271, Ownable, Initializable {
         emit Clone(oracle);
     }
 
-    function init(address owner) public initializer {
-        OwnableStorage.layout().owner = owner;
+    function init(address owner) external {
+        require(_owner() == address(0), "HEXL015");
+        _transferOwnership(owner);
     }
 
     function isRegistered(address validator) external view returns (bool) {

@@ -8,76 +8,31 @@ const namehash = function(name: string) {
 const sender = namehash("mailto:sender@gmail.com");
 const receiver = namehash("mailto:receiver@gmail.com");
 
-const idTypeEmail = 1;
-const authTypeOtp = 1;
+const address0 = ethers.constants.AddressZero;
 
 const getHexlink = async function() {
   const deployment = await deployments.get("HexlinkProxy");
   return await ethers.getContractAt("Hexlink", deployment.address);
 };
 
-const buildAuthProof = async function(
+const buildDeployAuthProof = async function(params: {
   name: string,
-  funcSig: string,
-  txData: Signer,
-  validator: Signer,
-  hexlink: Contract,
-  nonce: Number
-) {
-  nonce = nonce !== undefined ? nonce : await hexlink.nonce(sender);
-  const requestId = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes4", "bytes", "address", "uint256", "uint256"],
-      [funcSig, txData, hexlink.address, network.config.chainId, nonce]
-    )
-  );
-  const issuedAt = Math.round(Date.now() / 1000);
-  const message = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "bytes32", "uint256", "uint256", "uint256"],
-      [sender, requestId, issuedAt, idTypeEmail, authTypeOtp]
-    )
-  );
-  const signature = await validator.signMessage(
-    ethers.utils.arrayify(message)
-  );
-  const encodedSig = ethers.utils.defaultAbiCoder.encode(
-    ["address", "bytes"], [validator.address, signature]
-  )
-  return {
-    issuedAt,
-    identityType: 1,
-    authType: 1,
-    signature: encodedSig
-  };
+  hexlink?: string,
+  data?: string,
+  validator?: string,
+  nonce?: string
+}) {
+  return await run("build_deploy_auth_proof", params)
 }
 
-const buildResetAuthProof = async function(
+const buildResetAuthProof = async function(params: {
   name: string,
   account: string,
-  validator: Signer,
-  hexlink: Contract,
-  nonce: Number
-) {
-  const txData = ethers.utils.defaultAbiCoder.encode(
-    ["address"], [account]
-  );
-  const funcSig = hexlink.interface.getSighash("reset");
-  return await buildAuthProof(
-    name, funcSig, txData, validator, hexlink, nonce
-  );
-}
-
-const buildDeployAuthProof = async function(
-  name: string,
-  txData: string,
-  validator: Signer,
-  hexlink: Contract
-) {
-  const funcSig = hexlink.interface.getSighash("deploy");
-  return await buildAuthProof(
-    name, funcSig, txData, validator, hexlink
-  );
+  hexlink?: string,
+  validator?: string,
+  nonce?: string
+}) {
+  return await run("build_reset_auth_proof", params)
 }
 
 describe("Hexlink", function() {
@@ -87,27 +42,100 @@ describe("Hexlink", function() {
     await run("init_oracle", {validator});
   });
 
+  it("should deploy account contract without init", async function() {
+    const hexlink = await getHexlink();
+    const { deployer } = await ethers.getNamedSigners();
+    const name = sender;
+    const accountAddr = await hexlink.addressOfName(name);
+  
+    const authProof = await buildDeployAuthProof({
+      name, hexlink: hexlink.address
+    });
+    await expect(
+      hexlink.deploy(name, [], authProof)
+    ).to.emit(hexlink, "Deploy").withArgs(
+      name, accountAddr
+    );
+    expect(await ethers.provider.getCode(accountAddr)).to.not.eq("0x");
+
+    const account = await ethers.getContractAt("AccountSimple", accountAddr);
+    expect(await account.owner()).to.eq(address0);
+
+    await account.init(deployer.address);
+    expect(await account.owner()).to.eq(deployer.address);
+  });
+
   it("should deploy account contract", async function() {
     const hexlink = await getHexlink();
     const { deployer, validator } = await ethers.getNamedSigners();
-    const accountAddr = await hexlink.addressOfName(sender);
+    const name = sender;
+    const accountAddr = await hexlink.addressOfName(name);
     expect(await ethers.provider.getCode(accountAddr)).to.eq("0x");
 
-    // sign auth proof
+    // build tx data
     const artifact = await hre.artifacts.readArtifact("AccountSimple");
     const iface = new ethers.utils.Interface(artifact.abi);
-    const txData = iface.encodeFunctionData(
+    const data = iface.encodeFunctionData(
         "init", [deployer.address]
     );
-    const authProof1 = await buildDeployAuthProof(
-      sender, txData, validator, hexlink
-    );
+  
+    // deploy with wrong validator
+    let invalidAuthProof = await buildDeployAuthProof({
+      name,
+      data,
+      validator: "deployer",
+      hexlink: hexlink.address
+    });
+    await expect(
+      hexlink.reset(name, validator.address, invalidAuthProof)
+    ).to.be.revertedWith("IO002");
+  
+    // deploy with wrong nonce
+    invalidAuthProof = await buildDeployAuthProof({
+      name,
+      data,
+      validator: "validator",
+      hexlink: hexlink.address,
+      nonce: "1"
+    });
 
+    await expect(
+      hexlink.reset(name, deployer.address, invalidAuthProof)
+    ).to.be.revertedWith("IO003");
+  
+    // deploy with wrong tx data
+    const validAuthProof = await buildDeployAuthProof({
+      name,
+      data,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
+    await expect(
+      hexlink.deploy(name, [], validAuthProof)
+    ).to.be.revertedWith("IO003");
+
+    // deploy with wrong name
+    await expect(
+      hexlink.deploy(receiver, data, validAuthProof)
+    ).to.be.revertedWith("IO003");
+
+    // deploy with wrong identity type without oracle
+    invalidAuthProof = {...validAuthProof, identityType: 4};
+    await expect(
+      hexlink.deploy(name, data, invalidAuthProof)
+    ).to.be.revertedWith("HEXL017");
+
+    // deploy with wrong identity type and auth type
+    invalidAuthProof = {...validAuthProof, identityType: 4, authType: 2};
+    await expect(
+      hexlink.deploy(name, data, invalidAuthProof)
+    ).to.be.revertedWith("IO003");
+  
     // deploy account contract
     await expect(
-      hexlink.deploy(sender, txData, authProof1)
+      hexlink.deploy(name, data, validAuthProof)
     ).to.emit(hexlink, "Deploy").withArgs(
-      sender, accountAddr
+      name, accountAddr
     );
     expect(await ethers.provider.getCode(accountAddr)).to.not.eq("0x");
 
@@ -116,97 +144,136 @@ describe("Hexlink", function() {
     expect(await account.owner()).to.eq(deployer.address);
 
     // replay attack should throw
-    await expect(hexlink.connect(deployer).deploy(sender, txData, authProof1))
+    await expect(hexlink.connect(deployer).deploy(name, data, validAuthProof))
       .to.be.revertedWith("IO003");
 
     // redeploy should throw
-    const authProof2 = await buildDeployAuthProof(
-      sender, txData, validator, hexlink
-    );
-    await expect(hexlink.connect(deployer).deploy(sender, txData, authProof2))
+    const authProof2 = await buildDeployAuthProof({
+      name,
+      data,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
+    await expect(hexlink.connect(deployer).deploy(name, data, authProof2))
     .to.be.revertedWith("ERC1167: create2 failed");
     
     // reset after bootstrap should throw
-    const authProof3 = await buildResetAuthProof(
-      sender, deployer.address, validator, hexlink);
+    const authProof3 = await buildResetAuthProof({
+      name,
+      account: deployer.address,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
+
     await expect(
-      hexlink.reset(sender, validator.address, authProof3)
+      hexlink.reset(name, validator.address, authProof3)
     ).to.be.revertedWith("HEXL009");
   });
 
   it("Should reset account contract", async function() {
     const hexlink = await getHexlink();
+    const name = sender;
     const { deployer, validator } = await ethers.getNamedSigners();
-    const defaultAccount = await hexlink.addressOfName(sender);
+    const defaultAccount = await hexlink.addressOfName(name);
 
     // reset account contract to address(0)
-    let invalidAuthProof = await buildResetAuthProof(
-      sender, ethers.constants.AddressZero, validator, hexlink);
+    let validAuthProof = await buildResetAuthProof({
+      name,
+      account: address0,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
     await expect(
-      hexlink.reset(sender, ethers.constants.AddressZero, invalidAuthProof)
+      hexlink.reset(name, address0, validAuthProof)
     ).to.be.revertedWith("HEXL012");
   
     // reset with wrong validator
-    invalidAuthProof = await buildResetAuthProof(
-      sender, validator.address, deployer, hexlink);
+    let invalidAuthProof = await buildResetAuthProof({
+      name,
+      account: deployer.address,
+      validator: "deployer",
+      hexlink: hexlink.address
+    });
     await expect(
-      hexlink.reset(sender, validator.address, invalidAuthProof)
+      hexlink.reset(name, validator.address, invalidAuthProof)
     ).to.be.revertedWith("IO002");
   
     // reset with wrong nonce
-    invalidAuthProof = await buildResetAuthProof(
-      sender, deployer.address, validator, hexlink, 1);
+    invalidAuthProof = await buildResetAuthProof({
+      name,
+      account: deployer.address,
+      validator: "validator",
+      hexlink: hexlink.address,
+      nonce: "1"
+    });
     await expect(
-      hexlink.reset(sender, deployer.address, invalidAuthProof)
+      hexlink.reset(name, deployer.address, invalidAuthProof)
     ).to.be.revertedWith("IO003");
   
-    // reset with wrong argument
-    const validAuthProof = await buildResetAuthProof(
-      sender, deployer.address, validator, hexlink);
+    // reset with wrong account
+    validAuthProof = await buildResetAuthProof({
+      name,
+      account: deployer.address,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
     await expect(
-      hexlink.reset(sender, validator.address, validAuthProof)
+      hexlink.reset(name, validator.address, validAuthProof)
     ).to.be.revertedWith("IO003");
+
+    // reset with wrong name
     await expect(
       hexlink.reset(receiver, deployer.address, validAuthProof)
     ).to.be.revertedWith("IO003");
+
+    // reset with wrong identity type without oracle
     invalidAuthProof = {...validAuthProof, identityType: 4};
     await expect(
       hexlink.reset(receiver, deployer.address, invalidAuthProof)
     ).to.be.revertedWith("HEXL017");
+
+    // reset with wrong identity/auth type
     invalidAuthProof = {...validAuthProof, identityType: 4, authType: 2};
     await expect(
       hexlink.reset(receiver, deployer.address, invalidAuthProof)
     ).to.be.revertedWith("IO003");
 
     // reset account contract
-    const nonce = await hexlink.nonce(sender);
+    const nonce = await hexlink.nonce(name);
     await expect(
-      hexlink.reset(sender, deployer.address, validAuthProof)
-    ).to.emit(hexlink, "Reset").withArgs(sender, deployer.address);
-    expect(await hexlink.addressOfName(sender)).to.eq(deployer.address);
-    expect(await hexlink.nonce(sender)).to.eq(nonce.add(1));
+      hexlink.reset(name, deployer.address, validAuthProof)
+    ).to.emit(hexlink, "Reset").withArgs(name, deployer.address);
+    expect(await hexlink.addressOfName(name)).to.eq(deployer.address);
+    expect(await hexlink.nonce(name)).to.eq(nonce.add(1));
   
     // replay attack should throw
     await expect(
-      hexlink.reset(sender, deployer.address, validAuthProof)
+      hexlink.reset(name, deployer.address, validAuthProof)
     ).to.be.revertedWith("HEXL009");
   
     // reset calls after bootstrap should throw
-    const validAuthProof2 = await buildResetAuthProof(
-      sender, deployer.address, validator, hexlink);
+    const validAuthProof2 = await buildResetAuthProof({
+      name,
+      account: deployer.address,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
     await expect(
-      hexlink.reset(sender, validator.address, validAuthProof2)
+      hexlink.reset(name, validator.address, validAuthProof2)
     ).to.be.revertedWith("HEXL009");
 
     // deploy should work
-    const txData = ethers.utils.defaultAbiCoder.encode(
+    const data = ethers.utils.defaultAbiCoder.encode(
       ["address"], [deployer.address]
     );
-    const validAuthProof4 = await buildDeployAuthProof(
-      sender, txData, validator, hexlink
-    );
+    const validAuthProof4 = await buildDeployAuthProof({
+      name,
+      data,
+      validator: "validator",
+      hexlink: hexlink.address
+    });
     await expect(
-      hexlink.deploy(sender, txData, validAuthProof4)
-    ).to.emit(hexlink, "Deploy").withArgs(sender, defaultAccount);
+      hexlink.deploy(name, data, validAuthProof4)
+    ).to.emit(hexlink, "Deploy").withArgs(name, defaultAccount);
   });
 });

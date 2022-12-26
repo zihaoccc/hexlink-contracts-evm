@@ -194,5 +194,4 @@ describe("Hexlink Account", function() {
     });
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });
-
 });

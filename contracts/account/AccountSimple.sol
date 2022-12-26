@@ -3,10 +3,8 @@
 pragma solidity ^0.8.8;
 
 import "./AccountBase.sol";
-import "../utils/Initializable.sol";
-import "hardhat/console.sol";
 
-contract AccountSimple is AccountBase, Initializable {
+contract AccountSimple is AccountBase {
     using Address for address;
     
     event GasPayment(bytes32 indexed request, uint256 gasCost);
@@ -16,7 +14,9 @@ contract AccountSimple is AccountBase, Initializable {
     }
     AppStorage internal s;
     
-    function init(address owner) external initializer {
+    function init(address owner) external {
+        require(_owner() == address(0), "HEXL015");
+        require(owner != address(0), "HEXL019");
         _transferOwnership(owner);
     }
 
