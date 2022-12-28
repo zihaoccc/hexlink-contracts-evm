@@ -9,35 +9,32 @@ import "./AccountBase.sol";
 contract AccountERC4337 is AccountBase, BaseWallet {
     event SetEntryPoint(address indexed newEntryPoint);
 
-    struct AppStorage {
-        uint256 nonce;
-        address entryPoint;
-    }
-    AppStorage internal s;
+    uint256 internal nonce_;
+    address internal entryPoint_;
 
     function init(address owner, address _entryPoint) external {
         require(_owner() == address(0), "HEXL015");
         _transferOwnership(owner);
-        s.entryPoint = _entryPoint;
+        entryPoint_ = _entryPoint;
     }
 
     function nonce() public view virtual returns (uint256) {
-        return s.nonce;
+        return nonce_;
     }
 
     function entryPoint() public view override virtual returns (address) {
-        return s.entryPoint;
+        return entryPoint_;
     }
 
     function updateEntryPoint(address newEntryPoint) onlyEntryPoint external {
-        s.entryPoint = newEntryPoint;
+        entryPoint_ = newEntryPoint;
         emit SetEntryPoint(newEntryPoint);
     }
 
     function _validateAndUpdateNonce(
         UserOperation calldata userOp
     ) internal override virtual {
-        require(s.nonce++ == userOp.nonce, "HEXLA005");
+        require(nonce_++ == userOp.nonce, "HEXLA005");
     }
 
     function _validateSignature(
@@ -49,7 +46,7 @@ contract AccountERC4337 is AccountBase, BaseWallet {
     }
 
     function _validateCaller() internal view override {
-        require(msg.sender == s.entryPoint
+        require(msg.sender == entryPoint_
             || msg.sender == owner(), "HEXLA013");
     }
 }

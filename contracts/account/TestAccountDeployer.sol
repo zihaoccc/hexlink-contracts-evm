@@ -3,9 +3,10 @@
 pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "./AccountProxy.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 contract TestAccountDeployer {
+    using Address for address;
 
     event Deploy(address indexed account);
 
@@ -15,8 +16,9 @@ contract TestAccountDeployer {
         base_ = base;
     }
 
-    function deploy(bytes32 name) external {
+    function deploy(bytes32 name, bytes calldata data) external {
         address account = Clones.cloneDeterministic(base_, name);
+        account.functionCall(data);
         emit Deploy(account);
     }
 

@@ -55,6 +55,9 @@ const config: HardhatUserConfig = {
     validator: {
       default: 1,
     },
+    tester: {
+      default: 2,
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

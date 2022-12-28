@@ -7,20 +7,17 @@ import "./AccountBase.sol";
 
 contract AccountSimple is AccountBase {
     using Address for address;
-    
-    event GasPayment(bytes32 indexed request, uint256 gasCost);
+
+    event GasPayment(bytes32 indexed request, uint256 payment);
 
     struct GasObject {
         address token;
         uint256 price;
+        uint256 core;
         uint256 base;
         address payable refundReceiver;
     }
-
-    struct AppStorage {
-        uint256 nonce;
-    }
-    AppStorage internal s;
+    uint256 private nonce_;
     
     function init(address owner) external {
         require(_owner() == address(0), "HEXL015");
@@ -28,20 +25,25 @@ contract AccountSimple is AccountBase {
         _transferOwnership(owner);
     }
 
+    function nonce() external view returns(uint256) {
+        return nonce_;
+    }
+
     function validateAndCall(
         bytes calldata txData,
         GasObject calldata gas, // gas settings
-        uint256 nonce,
+        uint256 _nonce,
         bytes calldata signature
     ) external {
         uint256 gasUsed = gasleft();
-        require(msg.sender != address(this), "HEXLA007");
-        require(s.nonce++ == nonce, "HEXLA008");
-        bytes32 request = keccak256(abi.encode(txData, gas, nonce));
-        _validateSignature(request, signature);
-        address(this).functionCall(txData, "HEXLA009");
-        uint256 payment = handlePayment(gasUsed - gasleft(), gas);
-        emit GasPayment(request, payment);
+        bytes32 requestId = keccak256(abi.encode(txData, gas, nonce_));
+        require(nonce_++ == _nonce, "HEXLA008");
+        _validateSignature(requestId, signature);
+        uint256 gaslimit = gas.core == 0 ? gasleft() : gas.core;
+        (bool success,) = address(this).call{gas: gaslimit}(txData);
+        require(success, "HEXLA009");
+        uint256 payment = handlePayment(gasUsed - gasleft() + gas.base, gas);
+        emit GasPayment(requestId, payment);
     }
 
     function _validateCaller() internal view override {
@@ -60,7 +62,7 @@ contract AccountSimple is AccountBase {
             ? payable(tx.origin)
             : gas.refundReceiver;
         if (gas.token == address(0)) {
-            uint256 price = gas.price < tx.gasprice ? gas.price : tx.gasprice;
+            uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
             // For ETH we will only adjust the gas price to not be higher than the actual used gas price
             payment = (gasUsed + gas.base) * price;
             Address.sendValue(receiver, payment);

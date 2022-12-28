@@ -1,5 +1,5 @@
 import {expect} from "chai";
-import {ethers, deployments, artifacts, run} from "hardhat";
+import {ethers, deployments, run} from "hardhat";
 import { Contract } from "ethers";
 
 const namehash = function(name: string) : string {
@@ -14,6 +14,23 @@ const getContract = async function(name: string) : Promise<Contract> {
   const deployment = await deployments.get(name);
   return await ethers.getContractAt(name, deployment.address);
 };
+
+const deployAccount = async function(name: string, accountDeployer: Contract) : Contract {
+  const { deployer } = await ethers.getNamedSigners();
+  const artifact = await deployments.getArtifact("AccountSimple");
+  const iface = new ethers.utils.Interface(artifact.abi);
+  const data = iface.encodeFunctionData(
+    "init", [deployer.address]
+  );
+  const accountAddr = await accountDeployer.addressOfName(name);
+  await expect(
+    accountDeployer.deploy(name, data)
+  ).to.emit(accountDeployer, "Deploy").withArgs(accountAddr);
+  return await ethers.getContractAt(
+    "AccountSimple",
+    accountAddr
+  );
+}
 
 describe("Hexlink Account", function() {
   beforeEach(async function() {
@@ -55,7 +72,6 @@ describe("Hexlink Account", function() {
 
   it("Should transfer erc20 successfully", async function() {
     const { deployer } = await ethers.getNamedSigners();
-    const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
     const accountAddr = await accountDeployer.addressOfName(sender);
 
@@ -68,14 +84,7 @@ describe("Hexlink Account", function() {
     expect(await token.balanceOf(accountAddr)).to.eq(5000);
 
     // deploy account contract
-    await expect(
-      accountDeployer.deploy(sender)
-    ).to.emit(accountDeployer, "Deploy").withArgs(accountAddr);
-    const account = await ethers.getContractAt(
-      "AccountSimple",
-      accountAddr
-    );
-    await account.init(deployer.address);
+    const account = await deployAccount(sender, accountDeployer);
 
     // receive tokens after account created
     await expect(
@@ -98,7 +107,6 @@ describe("Hexlink Account", function() {
 
   it("Should transfer eth successfully", async function() {
     const { deployer } = await ethers.getNamedSigners();
-    const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
     const senderAddr = await accountDeployer.addressOfName(sender);
 
@@ -113,14 +121,7 @@ describe("Hexlink Account", function() {
     ).to.eq(ethers.utils.parseEther("1.0"));
 
     // create new account contract
-    await expect(
-      accountDeployer.deploy(sender)
-    ).to.emit(accountDeployer, "Deploy").withArgs(senderAddr);
-    const account = await ethers.getContractAt(
-      "AccountSimple",
-      senderAddr
-    );
-    await account.init(deployer.address);
+    const account = await deployAccount(sender, accountDeployer);
 
     // receive eth after account created
     const tx2 = await deployer.sendTransaction({
@@ -147,11 +148,9 @@ describe("Hexlink Account", function() {
 
   it("Should hold and transfer ERC1155 successfully", async function() {
     const { deployer } = await ethers.getNamedSigners();
-    const erc1155 = await getContract("TestHexlinkERC1155");
-
-    const proxy = await getContract("AccountProxy");
     const accountDeployer = await getContract("TestAccountDeployer");
     const senderAddr = await accountDeployer.addressOfName(sender);
+    const erc1155 = await getContract("TestHexlinkERC1155");
 
     // receive erc1155 before account created
     await expect(
@@ -163,16 +162,9 @@ describe("Hexlink Account", function() {
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
 
     // create new account contract
-    await expect(
-      accountDeployer.deploy(sender)
-    ).to.emit(accountDeployer, "Deploy").withArgs(senderAddr);
-    const account = await ethers.getContractAt(
-      "AccountSimple",
-      senderAddr
-    );
-    await account.init(deployer.address);
+    const account = await deployAccount(sender, accountDeployer);
 
-    // receive erc1155 with contract
+    // receive erc1155 after account created
     await expect(
       erc1155.connect(deployer).safeTransferFrom(
         deployer.address, senderAddr, 1, 10, []
@@ -195,5 +187,136 @@ describe("Hexlink Account", function() {
       hexlink: accountDeployer.address
     });
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
+  });
+
+  it("Should pay gas with eth", async function() {
+    const accountDeployer = await getContract("TestAccountDeployer");
+    const account = await deployAccount(sender, accountDeployer);
+    const token = await getContract("HexlinkToken");
+    const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+    // send token to account
+    await token.connect(deployer).transfer(account.address, 5000);
+    // send eth to account
+    let balance = ethers.utils.parseEther("1.0");
+    await deployer.sendTransaction({
+      to: account.address,
+      value: balance
+    });
+
+    // token transfer with validateAndCall
+    const tokenSendingData = token.interface.encodeFunctionData(
+        "transfer",
+        [tester.address, 100]
+    );
+    const data = account.interface.encodeFunctionData(
+        "exec",
+        [
+          {
+            to: token.address,
+            value: 0,
+            callData: tokenSendingData,
+            callGasLimit: 0
+          }
+        ]
+    );
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
+    const gas = {
+      token: ethers.constants.AddressZero,
+      price: 0,
+      base: 40000, // in react it's around 36000 for payment and event emitting
+      core: 0,
+      refundReceiver: receiverAddr,
+    };
+    const nonce = await account.nonce();
+    const requestId = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes", "tuple(address, uint256, uint256, uint256, address payable)", "uint256"],
+        [data, [gas.token, gas.price, gas.core, gas.base, gas.refundReceiver], nonce]
+      ));
+    const signature = await deployer.signMessage(
+      ethers.utils.arrayify(requestId)
+    );
+    const tx = await account.connect(validator).validateAndCall(
+      data, gas, nonce, signature
+    );
+
+    const receipt = await tx.wait();
+    const events = receipt.logs.filter(
+      log => log.address == account.address
+    ).map((log: any) => account.interface.parseLog(log));
+    const event = events.find((e: any) => e.name == "GasPayment");
+    expect(event.args.request).to.eq(requestId);
+    
+    // check eth balance
+    expect(
+      await ethers.provider.getBalance(receiverAddr)
+    ).to.eq(event.args.payment);
+    expect(
+      await ethers.provider.getBalance(account.address)
+    ).to.eq(balance.sub(event.args.payment));
+    // check token balance
+    expect(await token.balanceOf(tester.address)).to.eq(100);
+    expect(await token.balanceOf(account.address)).to.eq(4900);
+  });
+
+  it("Should pay gas with erc20", async function() {
+    const accountDeployer = await getContract("TestAccountDeployer");
+    const account = await deployAccount(sender, accountDeployer);
+    const token = await getContract("HexlinkToken");
+    const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+    // send token to account
+    await token.connect(deployer).transfer(account.address, 200000);
+
+    // token transfer with validateAndCall
+    const tokenSendingData = token.interface.encodeFunctionData(
+        "transfer",
+        [tester.address, 100]
+    );
+    const data = account.interface.encodeFunctionData(
+        "exec",
+        [
+          {
+            to: token.address,
+            value: 0,
+            callData: tokenSendingData,
+            callGasLimit: 0
+          }
+        ]
+    );
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
+    const gas = {
+      token: token.address,
+      price: 1,
+      base: 40000, // in react it's around 36000 for payment and event emitting
+      core: 0,
+      refundReceiver: receiverAddr,
+    };
+    const nonce = await account.nonce();
+    const requestId = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes", "tuple(address, uint256, uint256, uint256, address payable)", "uint256"],
+        [data, [gas.token, gas.price, gas.core, gas.base, gas.refundReceiver], nonce]
+      ));
+    const signature = await deployer.signMessage(
+      ethers.utils.arrayify(requestId)
+    );
+    const tx = await account.connect(validator).validateAndCall(
+      data, gas, nonce, signature
+    );
+
+    const receipt = await tx.wait();
+    const events = receipt.logs.filter(
+      log => log.address == account.address
+    ).map((log: any) => account.interface.parseLog(log));
+    const event = events.find((e: any) => e.name == "GasPayment");
+    expect(event.args.request).to.eq(requestId);
+    
+    // check token balance
+    expect(await token.balanceOf(receiverAddr)).to.eq(event.args.payment);
+    expect(await token.balanceOf(account.address)).to.eq(
+      200000 - 100 - event.args.payment.toNumber()
+    );
   });
 });
