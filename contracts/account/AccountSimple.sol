@@ -63,7 +63,6 @@ contract AccountSimple is AccountBase {
             Address.sendValue(receiver, payment);
         } else {
             payment = (gasUsed + gas.base) * gas.price;
-            console.log(payment);
             require(transferToken(gas.token, receiver, payment), "HEXLA013");
         }
     }
