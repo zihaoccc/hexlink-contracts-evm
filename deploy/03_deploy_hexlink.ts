@@ -27,12 +27,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     "HexlinkUpgradeable",
     hexlinkDeployment.address
   );
-  const admin = await hre.run("get_admin", {})
+  const admin = await hre.deployments.get("HexlinkAdmin");
   const oracleRegistry = await deployments.get(
     "IdentityOracleRegistry"
   );
-  await hexlinkContract.init(admin, oracleRegistry.address);
+  await hexlinkContract.init(admin.address, oracleRegistry.address);
 };
 
 export default func;
-func.tags = ["HEXL", "CORE", "TEST"];
+func.tags = ["HEXL", "CORE"];

@@ -18,7 +18,7 @@ const getContract = async function(name: string) : Promise<Contract> {
 describe("Hexlink Account", function() {
   beforeEach(async function() {
     const { deployer } = await ethers.getNamedSigners();
-    await deployments.fixture(["ACCOUNT", "TEST"]);
+    await deployments.fixture(["ADMIN", "ACCOUNT", "TEST"]);
     const proxy = await getContract("AccountProxy");
     // deploy test deployer
     await deployments.deploy("TestAccountDeployer", {
@@ -37,7 +37,6 @@ describe("Hexlink Account", function() {
   });
 
   it("Should with correct beacon and implementation", async function() {
-    const { deployer } = await ethers.getNamedSigners();
     const impl = await getContract("AccountSimple");
     const beacon = await getContract("AccountBeacon");
     const proxy = await getContract("AccountProxy");
@@ -46,7 +45,10 @@ describe("Hexlink Account", function() {
     expect(await proxy.beacon()).to.eq(beacon.address);
   
     const impl2 = await getContract("AccountERC4337");
-    await beacon.connect(deployer).upgradeTo(impl2.address);
+    const data = beacon.interface.encodeFunctionData(
+      "upgradeTo", [impl2.address]
+    );
+    await run("admin_exec", {target: beacon.address, data})
     expect(await beacon.implementation()).to.eq(impl2.address);
     expect(await proxy.beacon()).to.eq(beacon.address);
   });

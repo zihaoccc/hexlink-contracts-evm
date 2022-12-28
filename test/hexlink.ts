@@ -276,4 +276,46 @@ describe("Hexlink", function() {
       hexlink.deploy(name, data, validAuthProof4)
     ).to.emit(hexlink, "Deploy").withArgs(name, defaultAccount);
   });
+
+  it("Should upgrade", async function() {
+    const hexlinkProxy = await deployments.get("HexlinkProxy");
+    const hexlinkV1 = await ethers.getContractAt(
+      "HexlinkUpgradeable",
+      hexlinkProxy.address
+    );
+    const hexlinkImpl = await deployments.get("HexlinkUpgradeable");
+    expect(await hexlinkV1.implementation()).to.eq(hexlinkImpl.address);
+    const senderAddr = await hexlinkV1.addressOfName(sender);
+
+    // deploy new hexlink impl
+    const accountProxy = await deployments.get("AccountProxy");
+    const {deployer} = await getNamedAccounts();
+    const newHexlinkImpl = await deployments.deploy("HexlinkUpgradeableV2ForTest", {
+      from: deployer,
+      args: [accountProxy.address],
+      log: true,
+      autoMine: true,
+    });
+
+    // upgrade
+    const data = hexlinkV1.interface.encodeFunctionData(
+      "upgradeTo",
+      [newHexlinkImpl.address]
+    );
+    await run("admin_exec", {target: hexlinkV1.address, data});
+
+    const hexlinkV2 = await ethers.getContractAt(
+      "HexlinkUpgradeableV2ForTest",
+      hexlinkProxy.address
+    );
+    expect(
+      await hexlinkV2.implementation()
+    ).to.eq(newHexlinkImpl.address);
+    expect(
+      await hexlinkV2.addressOfName(sender)
+    ).to.eq(senderAddr);
+    expect(
+      await hexlinkV2.name()
+    ).to.eq("HexlinkUpgradeableV2ForTest");
+  });
 });

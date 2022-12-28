@@ -15,10 +15,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy account beacon contract
-  const admin = await hre.run("get_admin", {})
+  const admin = await hre.deployments.get("HexlinkAdmin");
   const beacon = await deploy("AccountBeacon", {
     from: deployer,
-    args: [accountImpl.address, admin],
+    args: [accountImpl.address, admin.address],
     log: true,
     autoMine: true,
   });
@@ -33,4 +33,4 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["HEXL", "ACCOUNT", "TEST"];
+func.tags = ["HEXL", "ACCOUNT"];

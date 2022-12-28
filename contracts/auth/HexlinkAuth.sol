@@ -23,8 +23,8 @@ struct RequestInfo {
 library HexlinkAuthStorage {
     struct Layout {
         address oracle;
-        // request id => prev auth proof
-        mapping(bytes32 => PrevAuthProof) proofs;
+        // name => request id => prev auth proof
+        mapping(bytes32 => mapping(bytes32 => PrevAuthProof)) proofs;
     }
 
     bytes32 internal constant STORAGE_SLOT =
@@ -84,11 +84,11 @@ abstract contract HexlinkAuth {
         AuthProof calldata proof
     ) internal returns(uint256) {
         HexlinkAuthStorage.Layout storage s = HexlinkAuthStorage.layout();
-        PrevAuthProof memory prev = s.proofs[info.requestId];
+        PrevAuthProof memory prev = s.proofs[info.name][info.requestId];
         if (prev.verifiedAt == 0) { // stage 1
             _validate(info, proof);
-            s.proofs[info.requestId].verifiedAt = block.timestamp;
-            s.proofs[info.requestId].identityType = proof.identityType;
+            s.proofs[info.name][info.requestId].verifiedAt = block.timestamp;
+            s.proofs[info.name][info.requestId].identityType = proof.identityType;
             return 1;
         } else { // stage 2
             if (!_isValid2ndFac(proof)) {

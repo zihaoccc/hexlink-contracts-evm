@@ -8,12 +8,12 @@ import "hardhat-gas-reporter";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 
+import "./tasks/admin";
 import "./tasks/account";
 import "./tasks/nft";
 import "./tasks/hexlink";
 import "./tasks/auth";
 import "./tasks/oracle";
-import "./tasks/utils";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")

@@ -13,7 +13,7 @@ const getContract = async function(name: string) {
 
 describe("IdentityOracle", function() {
   beforeEach(async function() {
-    await deployments.fixture(["ORACLE"]);
+    await deployments.fixture(["ADMIN", "ORACLE"]);
     const { validator } = await getNamedAccounts();
     await run("init_oracle", {validator}); 
   });

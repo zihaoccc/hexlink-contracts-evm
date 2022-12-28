@@ -6,6 +6,7 @@ pragma solidity ^0.8.8;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IIdentityOracleRegistry.sol";
+import "hardhat/console.sol";
 
 contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
     using Address for address;

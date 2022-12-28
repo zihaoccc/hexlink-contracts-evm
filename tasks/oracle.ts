@@ -12,10 +12,10 @@ async function createOracle(
     name: string,
     hre: HardhatRuntimeEnvironment
 ): Promise<string> {
-    const { deployer } = await hre.getNamedAccounts();
+    const adminDeployed = await deployments.get("HexlinkAdmin");
     const tx = await oracle.clone(
         ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name)),
-        deployer
+        adminDeployed.address
     );
     const receipt = await tx.wait();
     const events = receipt.logs.map((log: any) => oracle.interface.parseLog(log));
@@ -48,11 +48,14 @@ task("init_oracle", "setup email otp and twitter oauth oracle")
         const emailOtp = await createOracle(oracleImpl, "EMAIL_OTP", hre);
         const twitterOAuth = await createOracle(oracleImpl, "TWITTER_OAUTH", hre);
         const registry = await getRegistry(hre);
-        // register oracle
-        await registry.registerBatch([
-            {identityType: 1, authType: 1}, // email otp 
-            {identityType: 4, authType: 2}, // twitter oauth
-        ], [emailOtp, twitterOAuth]);
+        const data = registry.interface.encodeFunctionData(
+            "registerBatch",
+            [[
+                {identityType: 1, authType: 1}, // email otp 
+                {identityType: 4, authType: 2}, // twitter oauth
+            ], [emailOtp, twitterOAuth]]
+        )
+        await run("admin_exec", {target: registry.address, data})
         // register validator
         await run(
             "register_validator",
@@ -70,12 +73,14 @@ task("register_oracle", "register oracle contract for identity and auth type")
     .addParam("oracle", "the oracle type")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const registry = await getRegistry(hre);
-        await registry.regsiter(
-            {
+        const data = registry.interface.encodeFunctionData(
+            "regsiter",
+            [{
                 identityType: Number(args.identity),
                 authType: Number(args.auth)
-            }, ethers.utils.getAddress(args.oracle)
-        );
+            }, ethers.utils.getAddress(args.oracle)]
+        )
+        await run("admin_exec", {target: registry.address, data});
     });
 
 task("register_validator", "register validator at oracle contract")
@@ -83,5 +88,9 @@ task("register_validator", "register validator at oracle contract")
     .addParam("validator")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const oracle = await getOracle(ethers.utils.getAddress(args.oracle), hre);
-        await oracle.register(ethers.utils.getAddress(args.validator), true);
+        const data = oracle.interface.encodeFunctionData(
+            "register",
+            [ethers.utils.getAddress(args.validator), true]
+        )
+        await run("admin_exec", {target: oracle.address, data});
     });

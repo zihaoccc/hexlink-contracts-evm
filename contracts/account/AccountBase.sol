@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAccount.sol";
 
 abstract contract AccountBase is IERC1271, IAccount, Ownable {
+    using Address for address;
     using ECDSA for bytes32;
 
     receive() external payable { }
@@ -55,7 +56,7 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
     function _validateSignature(bytes32 message, bytes calldata signature) internal view {
         address signer = owner();
         bytes32 reqHash = message.toEthSignedMessageHash();
-        if (Address.isContract(signer)) {
+        if (signer.isContract()) {
             try IERC1271(signer).isValidSignature(reqHash, signature) returns (bytes4 returnvalue) {
                 require(returnvalue == IERC1271.isValidSignature.selector, "HEXLA002");
             } catch Error(string memory reason) {

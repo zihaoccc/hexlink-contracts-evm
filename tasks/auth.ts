@@ -72,7 +72,7 @@ const buildAuthProof = async function(params: {
       authType: params.authType,
       signature: encodedSig
     };
-  }
+};
 
 task("build_deploy_auth_proof", "build auth proof")
     .addParam("name")
