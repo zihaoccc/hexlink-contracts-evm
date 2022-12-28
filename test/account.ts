@@ -224,7 +224,7 @@ describe("Hexlink Account", function() {
     const gas = {
       token: ethers.constants.AddressZero,
       price: 0,
-      base: 40000, // in react it's around 36000 for payment and event emitting
+      base: 50000, // in react it's around 36000 for payment and event emitting
       core: 0,
       refundReceiver: receiverAddr,
     };
@@ -289,7 +289,7 @@ describe("Hexlink Account", function() {
     const gas = {
       token: token.address,
       price: 1,
-      base: 40000, // in react it's around 36000 for payment and event emitting
+      base: 50000, // in react it's around 36000 for payment and event emitting
       core: 0,
       refundReceiver: receiverAddr,
     };

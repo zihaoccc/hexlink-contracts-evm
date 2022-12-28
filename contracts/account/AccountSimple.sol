@@ -54,20 +54,16 @@ contract AccountSimple is AccountBase {
         uint256 gasUsed,
         GasObject calldata gas
     ) private returns (uint256 payment) {
-        // solhint-disable-next-line avoid-tx-origin
-        // payment = 21000 or 65000 gas
-        // emit = 1200 gas = 375(log) + 375(topic) + 32 * 8(logData) + 64 * 3(memory)
-        // buffer = 700 gas
         address payable receiver = gas.refundReceiver == address(0)
             ? payable(tx.origin)
             : gas.refundReceiver;
         if (gas.token == address(0)) {
             uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
-            // For ETH we will only adjust the gas price to not be higher than the actual used gas price
             payment = (gasUsed + gas.base) * price;
             Address.sendValue(receiver, payment);
         } else {
             payment = (gasUsed + gas.base) * gas.price;
+            console.log(payment);
             require(transferToken(gas.token, receiver, payment), "HEXLA013");
         }
     }
