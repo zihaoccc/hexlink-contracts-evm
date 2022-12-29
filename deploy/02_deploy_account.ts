@@ -7,7 +7,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployer} = await getNamedAccounts();
 
   // deploy account implementation
-  const accountImpl = await deploy("AccountSimple", {
+  await deploy("AccountSimple", {
     from: deployer,
     args: [],
     log: true,
@@ -15,8 +15,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy account beacon contract
+  const accountImpl = await hre.deployments.get("AccountSimple");
   const admin = await hre.deployments.get("HexlinkAdmin");
-  const beacon = await deploy("AccountBeacon", {
+  await deploy("AccountBeacon", {
     from: deployer,
     args: [accountImpl.address, admin.address],
     log: true,
@@ -24,6 +25,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy beacon proxy contract
+  const beacon = await hre.deployments.get("AccountBeacon");
   await deploy("AccountProxy", {
     from: deployer,
     args: [beacon.address],
