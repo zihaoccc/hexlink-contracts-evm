@@ -1,5 +1,5 @@
-import {expect} from "chai";
-import {ethers, deployments, run} from "hardhat";
+import { expect } from "chai";
+import { ethers, deployments, run } from "hardhat";
 import { Contract } from "ethers";
 
 const namehash = function(name: string) : string {
@@ -15,7 +15,10 @@ const getContract = async function(name: string) : Promise<Contract> {
   return await ethers.getContractAt(name, deployment.address);
 };
 
-const deployAccount = async function(name: string, accountDeployer: Contract) : Contract {
+const deployAccount = async function(
+  name: string,
+  accountDeployer: Contract
+) : Promise<Contract> {
   const { deployer } = await ethers.getNamedSigners();
   const artifact = await deployments.getArtifact("AccountSimple");
   const iface = new ethers.utils.Interface(artifact.abi);

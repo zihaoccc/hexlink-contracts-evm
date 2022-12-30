@@ -3,10 +3,10 @@
 pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./AccountBase.sol";
-import "../utils/GasPayer.sol";
 
-contract AccountSimple is AccountBase, GasPayer {
+contract AccountSimple is AccountBase {
     using Address for address;
 
     struct GasObject {
@@ -21,8 +21,7 @@ contract AccountSimple is AccountBase, GasPayer {
     uint256 private nonce_;
     
     function init(address owner) external {
-        require(_owner() == address(0), "HEXL015");
-        require(owner != address(0), "HEXL019");
+        require(_owner() == address(0) && owner != address(0), "HEXL015");
         _transferOwnership(owner);
     }
 
@@ -54,5 +53,30 @@ contract AccountSimple is AccountBase, GasPayer {
 
     function _validateCaller() internal view override {
         require(msg.sender == owner() || msg.sender == address(this), "HEXLA011");
+    }
+
+    function _handleGasPayment(
+        uint256 gasUsed,
+        address token,
+        uint256 price,
+        address payable refundReceiver
+    ) internal returns (uint256 payment) {
+        address payable receiver = refundReceiver == address(0)
+            ? payable(tx.origin)
+            : refundReceiver;
+        if (price == 0) {
+            require(token == address(0), "HEXLU003");
+            price = tx.gasprice;
+        }
+        payment = gasUsed * price;
+        _transfer(token, receiver, payment);
+    }
+
+    function _transfer(address token, address payable receiver, uint256 amount) internal {
+        if (token == address(0)) {
+            Address.sendValue(receiver, amount);
+        } else {
+            IERC20(token).transfer(receiver, amount);
+        }
     }
 }
