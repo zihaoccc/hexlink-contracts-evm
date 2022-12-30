@@ -1,7 +1,7 @@
 {
   "goerli": {
       "safe": "0x4e8D85A3DA5227Aca8DFA70dB16C8BBFFa514a9F",
-      "validator": "0x4e8D85A3DA5227Aca8DFA70dB16C8BBFFa514a9F",
+      "validator": "0x943fabe0d1ae7130fc48cf2abc85f01fc987ec81",
       "timelock": {
           "minDelay": 60
       }

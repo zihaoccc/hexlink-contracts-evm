@@ -4,11 +4,10 @@ pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./AccountBase.sol";
+import "../utils/GasPayer.sol";
 
-contract AccountSimple is AccountBase {
+contract AccountSimple is AccountBase, GasPayer {
     using Address for address;
-
-    event GasPayment(bytes32 indexed request, uint256 payment);
 
     struct GasObject {
         address token;
@@ -17,6 +16,8 @@ contract AccountSimple is AccountBase {
         uint256 base;
         address payable refundReceiver;
     }
+
+    event GasPayment(bytes32 indexed request, uint256 payment);
     uint256 private nonce_;
     
     function init(address owner) external {
@@ -42,57 +43,16 @@ contract AccountSimple is AccountBase {
         uint256 gaslimit = gas.core == 0 ? gasleft() : gas.core;
         (bool success,) = address(this).call{gas: gaslimit}(txData);
         require(success, "HEXLA009");
-        uint256 payment = handlePayment(gasUsed - gasleft() + gas.base, gas);
+        uint256 payment = _handleGasPayment(
+            gasUsed - gasleft() + gas.base,
+            gas.token,
+            gas.price,
+            gas.refundReceiver
+        );
         emit GasPayment(requestId, payment);
     }
 
     function _validateCaller() internal view override {
         require(msg.sender == owner() || msg.sender == address(this), "HEXLA011");
-    }
-
-    function handlePayment(
-        uint256 gasUsed,
-        GasObject calldata gas
-    ) private returns (uint256 payment) {
-        address payable receiver = gas.refundReceiver == address(0)
-            ? payable(tx.origin)
-            : gas.refundReceiver;
-        if (gas.token == address(0)) {
-            uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
-            payment = (gasUsed + gas.base) * price;
-            Address.sendValue(receiver, payment);
-        } else {
-            payment = (gasUsed + gas.base) * gas.price;
-            require(transferToken(gas.token, receiver, payment), "HEXLA013");
-        }
-    }
-
-    /// @dev Transfers a token and returns if it was a success
-    /// @param token Token that should be transferred
-    /// @param receiver Receiver to whom the token should be transferred
-    /// @param amount The amount of tokens that should be transferred
-    function transferToken(
-        address token,
-        address receiver,
-        uint256 amount
-    ) internal returns (bool transferred) {
-        // 0xa9059cbb - keccack("transfer(address,uint256)")
-        bytes memory data = abi.encodeWithSelector(0xa9059cbb, receiver, amount);
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            // We write the return value to scratch space.
-            // See https://docs.soliditylang.org/en/v0.7.6/internals/layout_in_memory.html#layout-in-memory
-            let success := call(sub(gas(), 10000), token, 0, add(data, 0x20), mload(data), 0, 0x20)
-            switch returndatasize()
-                case 0 {
-                    transferred := success
-                }
-                case 0x20 {
-                    transferred := iszero(or(iszero(success), iszero(mload(0))))
-                }
-                default {
-                    transferred := 0
-                }
-        }
     }
 }
