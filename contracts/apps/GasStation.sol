@@ -71,7 +71,8 @@ contract GasStation {
 
     function pay(address from, address to, uint amount) external {
         require(from == msg.sender || approved(msg.sender, from), "Unauthorized");
-        deposits_[from] -= amount;
+        require(deposits_[from] >= amount, "Insufficient balance");
+        unchecked { deposits_[from] -= amount; }
         Address.sendValue(payable(to), amount);
         emit Payment(from, to, amount);
     }

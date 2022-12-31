@@ -11,14 +11,25 @@ contract RedPocket {
     using ECDSA for bytes32;
     using Address for address;
 
-    event PocketCreated(bytes32 indexed pocketId, address creator, address token, bytes32 salt);
-    event PocketClaimed(bytes32 indexed pocketId, address claimer, uint amount);
+    event PocketCreated(
+        bytes32 indexed pocketId,
+        address creator,
+        address token,
+        bytes32 salt,
+        uint256 amount,
+        uint32 split
+    );
+    event PocketClaimed(
+        bytes32 indexed pocketId,
+        address claimer,
+        uint amount
+    );
 
     struct Pocket {
         uint256 balance;
         address validator;
         uint64 expiredAt; // 0 means never expire
-        uint24 numOfShares;
+        uint24 split;
         uint8 mode; // 0: not_set, 1: fixed, 2: randomized
     }
     // user => pocketId => Pocket as pocket
@@ -31,7 +42,7 @@ contract RedPocket {
         uint256 amount,
         address validator,
         uint64 expiredAt,
-        uint24 numOfShares,
+        uint24 split,
         uint8 mode
     ) external payable {
         bytes32 pocketId = keccak256(abi.encode(msg.sender, token, salt));
@@ -42,14 +53,8 @@ contract RedPocket {
         } else {
             require(msg.value == amount, "Pocket value mismatch");
         }
-        pockets_[pocketId] = Pocket(
-            amount,
-            validator,
-            expiredAt,
-            numOfShares,
-            mode
-        );
-        emit PocketCreated(pocketId, msg.sender, token, salt);
+        pockets_[pocketId] = Pocket(amount, validator, expiredAt, split, mode);
+        emit PocketCreated(pocketId, msg.sender, token, salt, amount, split);
     }
 
     function pocket(bytes32 id) external view returns(Pocket memory) {
@@ -74,12 +79,14 @@ contract RedPocket {
         uint256 gasUsed = gasleft();
         bytes32 pocketId = keccak256(abi.encode(from, token, salt));
         Pocket memory p = pockets_[pocketId];
-        require(p.balance > 0 && p.numOfShares > 0, "Empty pocket");
+        require(p.balance > 0 && p.split > 0, "Empty pocket");
         require(p.expiredAt == 0 || p.expiredAt > block.timestamp, "Pocket Expired");
 
         // validate claimer
         require(count_[pocketId][claimer] == 0, "Already claimed");
-        bytes32 message = keccak256(abi.encode(pocketId, claimer, gasStation, refundReceiver));
+        bytes32 message = keccak256(
+            abi.encode(pocketId, claimer, gasStation, refundReceiver)
+        );
         bytes32 reqHash = message.toEthSignedMessageHash();
         require(p.validator == reqHash.recover(signature), "Invalid signature");
         count_[pocketId][claimer] += 1;
@@ -87,7 +94,7 @@ contract RedPocket {
         // claim red pocket
         uint256 claimed = _claimd(claimer, p);
         pockets_[pocketId].balance = p.balance - claimed;
-        pockets_[pocketId].numOfShares = p.numOfShares - 1;
+        pockets_[pocketId].split = p.split - 1;
         _transfer(token, claimer, claimed);
         emit PocketClaimed(pocketId, claimer, claimed);
 
@@ -103,15 +110,15 @@ contract RedPocket {
     }
 
     function _claimd(address claimer, Pocket memory p) internal view returns(uint256 claimed) {
-        if (p.numOfShares == 1) {
+        if (p.split == 1) {
             claimed = p.balance;
         } else if (p.mode == 1) { // fixed
-            claimed = p.balance / p.numOfShares;
+            claimed = p.balance / p.split;
         } else if (p.mode == 2) { // randomized
             uint randomHash = uint(keccak256(
                 abi.encode(claimer, block.difficulty, block.timestamp)
             ));
-            uint maxPerShare = (p.balance / p.numOfShares) * 2;
+            uint maxPerShare = (p.balance / p.split) * 2;
             claimed = randomHash % maxPerShare;
         }
         if (claimed == 0) {

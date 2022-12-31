@@ -57,13 +57,14 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
         bytes32 name,
         bytes calldata txData,
         AuthProof calldata proof
-    ) external override {
+    ) external override returns(address) {
         RequestInfo memory info = _buildRequestInfo(name, txData);
         _validate(info, proof);
         address account = Clones.cloneDeterministic(accountBase, name);
         account.functionCall(txData);
         states[name].nonce = info.nonce + 1;
         emit Deploy(name, account);
+        return account;
     }
 
     // reset name to account mapping when account is not initiated
