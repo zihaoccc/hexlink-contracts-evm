@@ -1,14 +1,15 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import {DeployFunction} from "hardhat-deploy/types";
-import config from '../config.json';
+import * as config from '../config.json';
+import ethers from "ethers";
 
-const getAdminConfig = async function(network: string) {
-    let conf = config[network];
-    if (conf) {
+const getAdminConfig = async function(hre: HardhatRuntimeEnvironment) {
+    let netConf = config[hre.network.name as keyof typeof config];
+    if (netConf) {
         return {
-            minDelay: Number(conf["timelock"].minDelay),
-            proposers: [ethers.utils.getAddress(conf["safe"])],
-            executors: [ethers.utils.getAddress(conf["safe"])]
+            minDelay: Number(netConf["timelock"].minDelay),
+            proposers: [ethers.utils.getAddress(netConf["safe"])],
+            executors: [ethers.utils.getAddress(netConf["safe"])]
         }
     } else {
         const { deployer } = await hre.getNamedAccounts();
@@ -25,7 +26,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  const { minDelay, proposers, executors } = await getAdminConfig(hre.network.name);
+  const { minDelay, proposers, executors } = await getAdminConfig(hre);
   await deploy("HexlinkAdmin", {
     from: deployer,
     args: [minDelay, proposers, executors],

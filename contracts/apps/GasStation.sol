@@ -16,14 +16,14 @@ contract GasStation {
     event Approval(address indexed from, address indexed operator, bool approval);
 
     ISwapRouter public immutable swapRouter;
-    address public immutable WETH;
+    address public immutable wrapped;
     mapping(address => uint256) private deposits_;
     // owner => operator => approved
     mapping(address => mapping(address => bool)) private approval_;
 
-    constructor(ISwapRouter _swapRouter, address _WETH) {
-        swapRouter = _swapRouter;
-        WETH = _WETH;
+    constructor(address _swapRouter, address _wrapped) {
+        swapRouter = ISwapRouter(_swapRouter);
+        wrapped = _wrapped;
     }
 
     function depositNativeCoin() external payable {
@@ -32,17 +32,15 @@ contract GasStation {
     }
 
     function depositToken(address token, uint256 amount) external payable {
-        // deposit eth
-        deposits_[msg.sender] += msg.value;
         // deposit and approve token to uniswap
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         TransferHelper.safeApprove(token, address(swapRouter), amount);
-        if (token != WETH) {
-            // swap to weth
+        // swap to weth
+        if (token != wrapped) {
             ISwapRouter.ExactInputSingleParams memory param =
                 ISwapRouter.ExactInputSingleParams({
                     tokenIn: token,
-                    tokenOut: WETH,
+                    tokenOut: wrapped,
                     fee: 3000, // 0.3%
                     recipient: address(this),
                     deadline: block.timestamp,
@@ -52,10 +50,10 @@ contract GasStation {
                 });
             amount = swapRouter.exactInputSingle(param);
         }
-        // withdraw as eth
-        WETH.functionCall(abi.encodeWithSignature('withdraw(uint256)', amount));
+        // unwrap as eth
+        wrapped.functionCall(abi.encodeWithSignature('withdraw(uint256)', amount));
         deposits_[msg.sender] += amount;
-        emit Deposit(msg.sender, msg.value + amount);
+        emit Deposit(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) external {

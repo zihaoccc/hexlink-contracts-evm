@@ -4,6 +4,11 @@
       "validator": "0x943fabe0d1ae7130fc48cf2abc85f01fc987ec81",
       "timelock": {
           "minDelay": 60
+      },
+      "gasStation": {
+           "swapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+           "wrapped": "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6",
+           "dai": "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844"
       }
   }
 }
