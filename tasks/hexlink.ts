@@ -8,32 +8,14 @@ const genNameHash = function(name: string) : string {
     );
 };
 
-const getAccountProxy = async function(
-    hre: HardhatRuntimeEnvironment
-): Promise<Contract> {
-    const {ethers, deployments} = hre;
-    const deployment = await deployments.get("AccountProxy");
-    return await hre.ethers.getContractAt(
-        "AccountProxy",
-        deployment.address
-    );
-};
-
 const getHexlink = async function(
     hre: HardhatRuntimeEnvironment,
     hexlink: string | null
 ): Promise<Contract> {
-    if (!hexlink) {
-        if (process.env.HEXLINK_ADDRESS) {
-            const hexlinkMap = JSON.parse(process.env.HEXLINK_ADDRESS);
-            hexlink = hexlinkMap[hre.network.name];
-        } else {
-            hexlink = hre.deployments.get("HexlinkProxy");
-        }
-    }
+    const deployment = await hre.deployments.get("HexlinkProxy");
     return await hre.ethers.getContractAt(
         "Hexlink",
-        ethers.utils.getAddress(hexlink!)
+        ethers.utils.getAddress(deployment.address)
     );
 }
 

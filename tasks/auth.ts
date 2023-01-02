@@ -1,11 +1,11 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ethers, Contract, BigNumber } from "ethers";
+import { ethers, Contract, BigNumber, Signer } from "ethers";
 
 const genNonce = async function(hexlink: Contract, args: {
     name: string,
     nonce: string
-}) : BigNumber {
+}) : Promise<BigNumber> {
     return args.nonce !== undefined
         ? BigNumber.from(args.nonce)
         : await hexlink.nonce(args.name);
@@ -15,32 +15,26 @@ const getHexlink = async function(
     hre: HardhatRuntimeEnvironment,
     hexlink: string | null
 ): Promise<Contract> {
-    if (!hexlink) {
-        if (process.env.HEXLINK_ADDRESS) {
-            const hexlinkMap = JSON.parse(process.env.HEXLINK_ADDRESS);
-            hexlink = hexlinkMap[hre.network.name];
-        } else {
-            hexlink = hre.deployments.get("HexlinkProxy");
-        }
-    }
+    const deployment = await hre.deployments.get("HexlinkProxy");
     return await hre.ethers.getContractAt(
         "Hexlink",
-        ethers.utils.getAddress(hexlink!)
+        ethers.utils.getAddress(deployment.address)
     );
 }
 
-const buildAuthProof = async function(params: {
+const buildAuthProof = async function(
     hre: HardhatRuntimeEnvironment,
-    name: string,
-    func: string,
-    data: string | [],
-    validator: Signer,
-    hexlink: Contract,
-    nonce: BigNumber,
-    identityType: Number,
-    authType: Number,
-    nonce: BigNumber
-}) {
+    params: {
+        name: string,
+        func: string,
+        data: string | [],
+        validator: Signer,
+        hexlink: Contract,
+        identityType: Number,
+        authType: Number,
+        nonce: BigNumber
+    }
+) {
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         ["bytes4", "bytes", "address", "uint256", "uint256"],
@@ -64,7 +58,7 @@ const buildAuthProof = async function(params: {
       ethers.utils.arrayify(message)
     );
     const encodedSig = ethers.utils.defaultAbiCoder.encode(
-      ["address", "bytes"], [params.validator.address, signature]
+      ["address", "bytes"], [await params.validator.getAddress(), signature]
     )
     return {
       issuedAt,
@@ -90,8 +84,7 @@ task("build_deploy_auth_proof", "build auth proof")
         const identityType = args.identityType ? Number(args.identityType) : 1;
         const authType = args.authType ? Number(args.authType) : 1;
         const nonce = await genNonce(hexlink, args);
-        return await buildAuthProof({
-            hre,
+        return await buildAuthProof(hre, {
             name: args.name,
             func: hexlink.interface.getSighash("deploy"),
             data,
@@ -121,8 +114,7 @@ task("build_reset_auth_proof", "build auth proof")
         const identityType = args.identityType ? Number(args.identityType) : 1;
         const authType = args.authType ? Number(args.authType) : 1;
         const nonce = await genNonce(hexlink, args);
-        return await buildAuthProof({
-            hre,
+        return await buildAuthProof(hre, {
             name: args.name,
             func: hexlink.interface.getSighash("reset"),
             data,

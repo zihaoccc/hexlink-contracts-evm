@@ -1,4 +1,4 @@
-import {HardhatUserConfig, task} from "hardhat/config";
+import { HardhatUserConfig, task, extendEnvironment } from "hardhat/config";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
@@ -37,7 +37,7 @@ const config: HardhatUserConfig = {
   solidity: "0.8.8",
   networks: {
     goerli: {
-      url: process.env.HARDHAT_GOERLI_URL || "",
+      url: process.env.VITE_HARDHAT_GOERLI_URL || "",
       accounts:
         process.env.HARDHAT_DEPLOYER !== undefined ?
           [process.env.HARDHAT_DEPLOYER] :
@@ -66,9 +66,6 @@ const config: HardhatUserConfig = {
     deploy: "deploy",
     deployments: "deployments",
   },
-  gasReporter: {
-    enabled: true
-  }
 };
 
 export default config;

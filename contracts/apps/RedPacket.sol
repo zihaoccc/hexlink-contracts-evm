@@ -7,64 +7,64 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-contract RedPocket {
+contract RedPacket {
     using ECDSA for bytes32;
     using Address for address;
 
-    event PocketCreated(
-        bytes32 indexed pocketId,
+    event PacketCreated(
+        bytes32 indexed PacketId,
         address creator,
         address token,
         bytes32 salt,
         uint256 amount,
         uint32 split
     );
-    event PocketClaimed(
-        bytes32 indexed pocketId,
+    event PacketClaimed(
+        bytes32 indexed PacketId,
         address claimer,
         uint amount
     );
 
-    struct Pocket {
+    struct Packet {
         uint256 balance;
         address validator;
         uint64 expiredAt; // 0 means never expire
         uint24 split;
         uint8 mode; // 0: not_set, 1: fixed, 2: randomized
     }
-    // user => pocketId => Pocket as pocket
-    mapping(bytes32 => Pocket) internal pockets_;
+    // user => PacketId => Packet as Packet
+    mapping(bytes32 => Packet) internal packets_;
     mapping(bytes32 => mapping(address => uint256)) internal count_;
 
     function create(
         address token,
-        bytes32 salt, // to identity a specific red pocket
+        bytes32 salt, // to identity a specific red Packet
         uint256 amount,
         address validator,
         uint64 expiredAt,
         uint24 split,
         uint8 mode
     ) external payable {
-        bytes32 pocketId = keccak256(abi.encode(msg.sender, token, salt));
-        require(pockets_[pocketId].mode == 0, "Pocket already exists");
+        bytes32 PacketId = keccak256(abi.encode(msg.sender, token, salt));
+        require(packets_[PacketId].mode == 0, "Packet already exists");
         require(mode == 1 || mode == 2, "Invalid mode");
         if (token != address(0)) {
             IERC20(token).transferFrom(msg.sender, address(this), amount);
         } else {
-            require(msg.value == amount, "Pocket value mismatch");
+            require(msg.value == amount, "Packet value mismatch");
         }
-        pockets_[pocketId] = Pocket(amount, validator, expiredAt, split, mode);
-        emit PocketCreated(pocketId, msg.sender, token, salt, amount, split);
+        packets_[PacketId] = Packet(amount, validator, expiredAt, split, mode);
+        emit PacketCreated(PacketId, msg.sender, token, salt, amount, split);
     }
 
-    function pocket(bytes32 id) external view returns(Pocket memory) {
-        return pockets_[id];
+    function packet(bytes32 id) external view returns(Packet memory) {
+        return packets_[id];
     }
 
     function refund(address token, bytes32 salt) external {
-        bytes32 pocketId = keccak256(abi.encode(msg.sender, token, salt));
-        _transfer(token, msg.sender, pockets_[pocketId].balance);
-        pockets_[pocketId].balance = 0;
+        bytes32 PacketId = keccak256(abi.encode(msg.sender, token, salt));
+        _transfer(token, msg.sender, packets_[PacketId].balance);
+        packets_[PacketId].balance = 0;
     }
 
     function claim(
@@ -77,26 +77,26 @@ contract RedPocket {
         bytes calldata signature
     ) external {
         uint256 gasUsed = gasleft();
-        bytes32 pocketId = keccak256(abi.encode(from, token, salt));
-        Pocket memory p = pockets_[pocketId];
-        require(p.balance > 0 && p.split > 0, "Empty pocket");
-        require(p.expiredAt == 0 || p.expiredAt > block.timestamp, "Pocket Expired");
+        bytes32 PacketId = keccak256(abi.encode(from, token, salt));
+        Packet memory p = packets_[PacketId];
+        require(p.balance > 0 && p.split > 0, "Empty Packet");
+        require(p.expiredAt == 0 || p.expiredAt > block.timestamp, "Packet Expired");
 
         // validate claimer
-        require(count_[pocketId][claimer] == 0, "Already claimed");
+        require(count_[PacketId][claimer] == 0, "Already claimed");
         bytes32 message = keccak256(
-            abi.encode(pocketId, claimer, gasStation, refundReceiver)
+            abi.encode(PacketId, claimer, gasStation, refundReceiver)
         );
         bytes32 reqHash = message.toEthSignedMessageHash();
         require(p.validator == reqHash.recover(signature), "Invalid signature");
-        count_[pocketId][claimer] += 1;
+        count_[PacketId][claimer] += 1;
 
-        // claim red pocket
+        // claim red Packet
         uint256 claimed = _claimd(claimer, p);
-        pockets_[pocketId].balance = p.balance - claimed;
-        pockets_[pocketId].split = p.split - 1;
+        packets_[PacketId].balance = p.balance - claimed;
+        packets_[PacketId].split = p.split - 1;
         _transfer(token, claimer, claimed);
-        emit PocketClaimed(pocketId, claimer, claimed);
+        emit PacketClaimed(PacketId, claimer, claimed);
 
         // pay gas with gas station
         if (gasStation != address(0)) {
@@ -109,7 +109,7 @@ contract RedPocket {
         }
     }
 
-    function _claimd(address claimer, Pocket memory p) internal view returns(uint256 claimed) {
+    function _claimd(address claimer, Packet memory p) internal view returns(uint256 claimed) {
         if (p.split == 1) {
             claimed = p.balance;
         } else if (p.mode == 1) { // fixed
