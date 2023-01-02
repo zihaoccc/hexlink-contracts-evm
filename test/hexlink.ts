@@ -37,8 +37,6 @@ const buildResetAuthProof = async function(params: {
 describe("Hexlink", function() {
   beforeEach(async function() {
     await deployments.fixture(["HEXL"]);
-    const { validator } = await getNamedAccounts();
-    await run("init_oracle", {validator});
   });
 
   it("should deploy account contract without init", async function() {

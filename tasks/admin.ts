@@ -1,6 +1,6 @@
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ethers, BigNumber, Signer } from "ethers";
+import { ethers, BigNumber, Signer, Contract } from "ethers";
 import config from '../config.json';
 
 import EthersAdapter from '@safe-global/safe-ethers-lib'
@@ -10,6 +10,21 @@ import SafeServiceClient, {
     ProposeTransactionProps,
     SafeInfoResponse,
   } from '@safe-global/safe-service-client';
+
+const execOp = async function(
+    hre: HardhatRuntimeEnvironment,
+    op: string | undefined,
+    target: string,
+    data: string
+) {
+    if (op == "schedule") {
+        await hre.run("admin_schedule", { target, data });
+    } else if (op == "exec") {
+        await hre.run("admin_exec", { target, data });
+    } else {
+        await hre.run("admin_schedule_and_exec", { target, data });
+    }
+}
 
 function netConf(hre: HardhatRuntimeEnvironment) {
     return config[hre.network.name as keyof typeof config] || {};
@@ -222,4 +237,55 @@ task("admin_schedule_and_exec", "schedule and execute")
             }, 1000));
         }
         await hre.run("admin_exec", args);
+    });
+
+task("registerOracle", "register oracle contract for identity and auth type")
+    .addParam("identity")
+    .addParam("auth")
+    .addParam("oracle", "the oracle type")
+    .addOptionalParam("op")
+    .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await deployments.get("IdentityOracleRegistry");
+        const registry = await ethers.getContractAt(
+            "IdentityOracleRegistry",
+            deployment.address
+        );
+        const data = registry.interface.encodeFunctionData(
+            "regsiter",
+            [{
+                identityType: Number(args.identity),
+                authType: Number(args.auth)
+            }, ethers.utils.getAddress(args.oracle)]
+        )
+        await execOp(hre, args.op, registry.address, data);
+    });
+
+task("registerValidator", "register validator at oracle contract")
+    .addParam("oracle")
+    .addParam("validator")
+    .addOptionalParam("op")
+    .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
+        const oracle = await hre.ethers.getContractAt("SimpleIdentityOracle", args.oracle);
+        const data = oracle.interface.encodeFunctionData(
+            "register",
+            [ethers.utils.getAddress(args.validator), true]
+        )
+        console.log("Registering valdiator " + args.validator + " at oracle " + args.oracle);
+        await execOp(hre, args.op, oracle.address, data);
+    });
+
+task("setOracleRegistry", "set oracle registry")
+    .addParam("oracleRegistry")
+    .addOptionalParam("op")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await hre.deployments.get("HexlinkProxy");
+        const hexlink = await hre.ethers.getContractAt(
+            "Hexlink",
+            ethers.utils.getAddress(deployment.address)
+        );
+        const data = hexlink.interface.encodeFunctionData(
+            "setOracleRegistry(address)",
+            [args.oracleRegistry]
+        );
+        await execOp(hre, args.op, hexlink.address, data);
     });

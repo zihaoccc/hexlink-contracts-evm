@@ -11,7 +11,7 @@ async function createOracle(
   name: string,
   admin: string,
   hre: HardhatRuntimeEnvironment
-): Promise<void> {
+): Promise<string> {
   const oracleImpl = await hre.deployments.get("SimpleIdentityOracle");
   const { deployer } = await hre.ethers.getNamedSigners();
   const oracle = await hre.ethers.getContractAt("SimpleIdentityOracle", oracleImpl.address);

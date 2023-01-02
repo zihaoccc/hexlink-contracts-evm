@@ -13,7 +13,6 @@ import "./tasks/account";
 import "./tasks/nft";
 import "./tasks/hexlink";
 import "./tasks/auth";
-import "./tasks/oracle";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")
