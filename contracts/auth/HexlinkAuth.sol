@@ -41,23 +41,16 @@ library HexlinkAuthStorage {
 abstract contract HexlinkAuth {
     using Address for address;
 
-    struct AuthConfig {
-        uint256 twoStageLock;
-        uint256 ttl;
-    }
+    uint256 constant public twoStageLock = 259200;
+    uint256 constant public ttl = 259200;
 
     function oracleRegistry() public view returns(address) {
         return HexlinkAuthStorage.layout().oracle;
     }
 
     function _setOracleRegistry(address registry) internal {
+        require(registry != address(0), "HEXL020");
         HexlinkAuthStorage.layout().oracle = registry;
-    }
-
-    function authConfig(
-        AuthProof memory /* proof */
-    ) public pure returns (AuthConfig memory) {
-        return AuthConfig(259200, 3600); // (3 days, 1 hour)
     }
 
     function _validate(
@@ -92,8 +85,10 @@ abstract contract HexlinkAuth {
             return 1;
         } else { // stage 2
             if (!_isValid2ndFac(proof)) {
-                uint256 lockTime = authConfig(proof).twoStageLock;
-                require(block.timestamp > prev.verifiedAt + lockTime, "HEXL005");
+                require(
+                    block.timestamp > prev.verifiedAt + twoStageLock,
+                    "HEXL005"
+                );
             } // else 2-fac
             _validateAuthProof(info, proof);
             return 2;
@@ -104,7 +99,6 @@ abstract contract HexlinkAuth {
         RequestInfo memory info,
         AuthProof calldata proof
     ) internal view {
-        uint256 ttl = authConfig(proof).ttl;
         require(
             proof.issuedAt < block.timestamp && proof.issuedAt + ttl > block.timestamp,
             "HEXL006"

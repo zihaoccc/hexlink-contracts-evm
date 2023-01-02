@@ -13,7 +13,7 @@ const getHexlink = async function(
 ): Promise<Contract> {
     const deployment = await hre.deployments.get("HexlinkProxy");
     return await hre.ethers.getContractAt(
-        "Hexlink",
+        "HexlinkUpgradeable",
         ethers.utils.getAddress(deployment.address)
     );
 }
@@ -41,25 +41,21 @@ const processTx = async function(tx: any) {
     );
 }
 
-task("accountBase", "Prints account base address")
-    .addOptionalParam("hexlink")
-    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+task("hexlink_check", "check hexlink metadata")
+    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre);
-        return await hexlink.accountBase();
-    });
-
-task("oracleRegistry", "get oracle registry")
-    .addOptionalParam("hexlink")
-    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre);
-        return await hexlink.oracleRegistry();
-    });
-
-task("authConfig", "get oracle registry")
-    .addOptionalParam("hexlink")
-    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre);
-        return await hexlink.authConfig();
+        const result = {
+            "accountBase": await hexlink.accountBase(),
+            "oracleRegistry": await hexlink.oracleRegistry(),
+            "authConfig": {
+                twoStageLock: (await hexlink.twoStageLock()).toNumber(),
+                ttl: (await hexlink.ttl()).toNumber(),
+            },
+            "owner": await hexlink.owner(),
+            "implementation": await hexlink.implementation(),
+        }
+        console.log(result);
+        return result;
     });
 
 task("account", "Prints account address")
