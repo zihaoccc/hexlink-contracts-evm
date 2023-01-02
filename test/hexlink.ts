@@ -1,6 +1,5 @@
 import {expect} from "chai";
-import {ethers, deployments, artifacts, network, run} from "hardhat";
-import { Contract, Signer } from "ethers";
+import {ethers, deployments, getNamedAccounts, artifacts, run} from "hardhat";
 
 const namehash = function(name: string) {
   return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -73,7 +72,7 @@ describe("Hexlink", function() {
     expect(await ethers.provider.getCode(accountAddr)).to.eq("0x");
 
     // build tx data
-    const artifact = await hre.artifacts.readArtifact("AccountSimple");
+    const artifact = await artifacts.readArtifact("AccountSimple");
     const iface = new ethers.utils.Interface(artifact.abi);
     const data = iface.encodeFunctionData(
         "init", [deployer.address]
@@ -302,7 +301,7 @@ describe("Hexlink", function() {
       "upgradeTo",
       [newHexlinkImpl.address]
     );
-    await run("admin_exec", {target: hexlinkV1.address, data});
+    await run("admin_schedule_and_exec", {target: hexlinkV1.address, data});
 
     const hexlinkV2 = await ethers.getContractAt(
       "HexlinkUpgradeableV2ForTest",

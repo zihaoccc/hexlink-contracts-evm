@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers, deployments, run } from "hardhat";
+import { ethers, deployments, artifacts, run } from "hardhat";
 import { Contract } from "ethers";
 
 const namehash = function(name: string) : string {
@@ -14,6 +14,18 @@ const getContract = async function(name: string) : Promise<Contract> {
   const deployment = await deployments.get(name);
   return await ethers.getContractAt(name, deployment.address);
 };
+
+const genERC20TransferTxData = async function(
+  receiver: string,
+  amount: Number
+): Promise<string> {
+  const artifact = await artifacts.readArtifact("ERC20");
+  const iface = new ethers.utils.Interface(artifact.abi);
+  return iface.encodeFunctionData(
+      "transfer",
+      [receiver, amount]
+  );
+}
 
 const deployAccount = async function(
   name: string,
@@ -68,7 +80,7 @@ describe("Hexlink Account", function() {
     const data = beacon.interface.encodeFunctionData(
       "upgradeTo", [impl2.address]
     );
-    await run("admin_exec", {target: beacon.address, data})
+    await run("admin_schedule_and_exec", {target: beacon.address, data})
     expect(await beacon.implementation()).to.eq(impl2.address);
     expect(await proxy.beacon()).to.eq(beacon.address);
   });
@@ -98,14 +110,17 @@ describe("Hexlink Account", function() {
 
     // send tokens
     expect(await token.balanceOf(account.address)).to.eq(10000);
-    await run("send", {
-      sender: senderName,
-      receiver: receiverName,
-      token: token.address,
-      hexlink: accountDeployer.address,
-      amount: "5000"
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
+    await account.connect(deployer).exec({
+      to: token.address,
+      value: 0,
+      callData: await genERC20TransferTxData(
+        receiverAddr, 5000
+      ),
+      callGasLimit: 0
     });
     expect(await token.balanceOf(account.address)).to.eq(5000);
+    expect(await token.balanceOf(receiverAddr)).to.eq(5000);
   });
 
   it("Should transfer eth successfully", async function() {
@@ -137,13 +152,13 @@ describe("Hexlink Account", function() {
     ).to.eq(ethers.utils.parseEther("2.0"));
 
     // send ETH
-    await run("send", {
-      sender: senderName,
-      receiver: receiverName,
-      hexlink: accountDeployer.address,
-      amount: ethers.utils.parseEther("0.5").toHexString()
-    });
     const receiverAddr = await accountDeployer.addressOfName(receiver);
+    await account.connect(deployer).exec({
+      to: receiverAddr,
+      value: ethers.utils.parseEther("0.5"),
+      callData: [],
+      callGasLimit: 0
+    });
     expect(
       await ethers.provider.getBalance(receiverAddr)
     ).to.eq(ethers.utils.parseEther("0.5").toHexString());
@@ -186,8 +201,7 @@ describe("Hexlink Account", function() {
     await run("exec", {
       account: account.address,
       to: erc1155.address,
-      callData: txData,
-      hexlink: accountDeployer.address
+      callData: txData
     });
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });

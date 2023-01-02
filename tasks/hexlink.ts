@@ -9,8 +9,7 @@ const genNameHash = function(name: string) : string {
 };
 
 const getHexlink = async function(
-    hre: HardhatRuntimeEnvironment,
-    hexlink: string | null
+    hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
     const deployment = await hre.deployments.get("HexlinkProxy");
     return await hre.ethers.getContractAt(
@@ -45,50 +44,47 @@ const processTx = async function(tx: any) {
 task("accountBase", "Prints account base address")
     .addOptionalParam("hexlink")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         return await hexlink.accountBase();
     });
 
 task("oracleRegistry", "get oracle registry")
     .addOptionalParam("hexlink")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         return await hexlink.oracleRegistry();
     });
 
 task("authConfig", "get oracle registry")
     .addOptionalParam("hexlink")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         return await hexlink.authConfig();
     });
 
 task("account", "Prints account address")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const nameHash = genNameHash(args.name);
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const account = await hexlink.addressOfName(nameHash);
         return account;
     });
 
 task("nonce", "get current nonce")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const nameHash = genNameHash(args.name);
         return await hexlink.nonce(nameHash);
     });
 
 task("bumpNonce", "bump nonce for a name")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("proof", "the auth proof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const {deployer} = await hre.getNamedAccounts();
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const nameHash = genNameHash(args.name);
         const tx = await hexlink.connect(deployer).bumpNonce(
             nameHash,
@@ -99,13 +95,12 @@ task("bumpNonce", "bump nonce for a name")
     });
 
 task("deployAccount", "deploy a new account per given email")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("owner")
     .addParam("proof", "the auth proof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const {deployer} = await hre.getNamedAccounts();
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
 
         const nameHash = genNameHash(args.name);
         const initData = hexlink.interface.encodeFunctionData(
@@ -122,13 +117,12 @@ task("deployAccount", "deploy a new account per given email")
     });
 
 task("resetAccount", "reset the account address")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("account")
     .addParam("proof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const {deployer} = await hre.getNamedAccounts();
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const nameHash = genNameHash(args.name);
         const tx = await hexlink.connect(deployer).reset(
             nameHash,
@@ -139,14 +133,13 @@ task("resetAccount", "reset the account address")
     });
 
 task("reset2Fac", "reset the account address with 2fac")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("account")
     .addParam("proof1")
     .addParam("proof2")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const {deployer} = await hre.getNamedAccounts();
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const nameHash = genNameHash(args.name);
         const tx = await hexlink.connect(deployer).reset(
             nameHash,
@@ -158,13 +151,12 @@ task("reset2Fac", "reset the account address with 2fac")
     });
 
 task("reset2Stage", "reset the account address with 2fac")
-    .addOptionalParam("hexlink")
     .addParam("name")
     .addParam("account")
     .addParam("authProof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const {deployer} = await hre.getNamedAccounts();
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const nameHash = genNameHash(args.name);
         const tx = await hexlink.connect(deployer).reset2Stage(
             nameHash,

@@ -12,8 +12,7 @@ const genNonce = async function(hexlink: Contract, args: {
 }
 
 const getHexlink = async function(
-    hre: HardhatRuntimeEnvironment,
-    hexlink: string | null
+    hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
     const deployment = await hre.deployments.get("HexlinkProxy");
     return await hre.ethers.getContractAt(
@@ -75,9 +74,8 @@ task("build_deploy_auth_proof", "build auth proof")
     .addOptionalParam("authType")
     .addOptionalParam("nonce")
     .addOptionalParam("validator")
-    .addOptionalParam("hexlink")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const signers = await hre.ethers.getNamedSigners();
         const validator = args.validator ? signers[args.validator] : signers.validator,
         const data = args.data ? args.data : [];
@@ -103,9 +101,8 @@ task("build_reset_auth_proof", "build auth proof")
     .addOptionalParam("authType")
     .addOptionalParam("nonce")
     .addOptionalParam("validator")
-    .addOptionalParam("hexlink")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const hexlink = await getHexlink(hre, args.hexlink);
+        const hexlink = await getHexlink(hre);
         const signers = await hre.ethers.getNamedSigners();
         const validator = args.validator ? signers[args.validator] : signers.validator,
         const data = ethers.utils.defaultAbiCoder.encode(

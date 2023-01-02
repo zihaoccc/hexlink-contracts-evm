@@ -1,6 +1,11 @@
-import {task} from "hardhat/config";
-import {HardhatRuntimeEnvironment} from "hardhat/types";
+import { task } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers, Contract } from "ethers";
+import config from '../config.json';
+
+function netConf(hre: HardhatRuntimeEnvironment) {
+    return config[hre.network.name as keyof typeof config] || {};
+}
 
 async function createOracle(
     oracle: Contract,
@@ -38,7 +43,6 @@ const getRegistry = async function(hre: HardhatRuntimeEnvironment) {
 };
 
 task("init_oracle", "setup email otp and twitter oauth oracle")
-    .addParam("validator")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const oracleImpl = await getOracleImpl(hre);
         const emailOtp = await createOracle(oracleImpl, "EMAIL_OTP", hre);
@@ -53,6 +57,10 @@ task("init_oracle", "setup email otp and twitter oauth oracle")
         );
         await hre.run("admin_schedule_and_exec", {target: registry.address, data})
         // register validator
+        let validator = netConf(hre)["validator"];
+        if (validator == undefined) {
+            validator = (await hre.getNamedAccounts())["validator"];
+        }
         await hre.run(
             "register_validator",
             {oracle: emailOtp, validator: args.validator}
@@ -88,5 +96,6 @@ task("register_validator", "register validator at oracle contract")
             "register",
             [ethers.utils.getAddress(args.validator), true]
         )
+        console.log("Registering valdiator " + args.validator + " at oracle " + args.oracle);
         await hre.run("admin_schedule_and_exec", {target: oracle.address, data});
     });

@@ -12,7 +12,7 @@ import SafeServiceClient, {
   } from '@safe-global/safe-service-client';
 
 function netConf(hre: HardhatRuntimeEnvironment) {
-    return config[hre.network.name as keyof typeof config];
+    return config[hre.network.name as keyof typeof config] || {};
 }
 
 async function safeService(
@@ -89,7 +89,8 @@ task("admin_check", "check if has role")
             "TimelockController",
             adminDeployed.address
         );
-        console.log("admin is " + admin.address);
+        const minDelay = await admin.getMinDelay();
+        console.log("admin is " + admin.address + ", with min delay as " + minDelay);
 
         const safe = ethers.utils.getAddress(netConf(hre)["safe"]);
         console.log("Gnosis Safe is " + safe);
@@ -136,7 +137,6 @@ task("admin_schedule", "schedule a tx")
         const delay = BigNumber.from(args.delay || 0);
         const { deployer } = await hre.ethers.getNamedSigners();
 
-        const value = BigNumber.from(args.value || 0), // value
         if (netConf(hre)["safe"]) {
             const data = admin.interface.encodeFunctionData(
                 "schedule(address,uint256,bytes,bytes32,bytes32,uint256)",
@@ -214,12 +214,12 @@ task("admin_schedule_and_exec", "schedule and execute")
     .addOptionalParam("salt")
     .addOptionalParam("delay")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        await hre.run("schedule", args);
+        await hre.run("admin_schedule", args);
         const delay = Number(args.delay || 0);
         if (delay > 0) {
             await new Promise(f => setTimeout(() =>{
                 console.log("Will wait for " + delay + "s for timelock...")
             }, 1000));
         }
-        await hre.run("exec", args);
+        await hre.run("admin_exec", args);
     });

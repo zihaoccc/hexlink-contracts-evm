@@ -53,7 +53,7 @@ task("send", "send ETH or token")
         }
       }
       const tx = await account.connect(deployer).exec(op);
-      return tx.hash;
+      await tx.wait();
     });
 
 task("exec", "execute abiratry transaction")
