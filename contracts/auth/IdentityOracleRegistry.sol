@@ -23,18 +23,23 @@ contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
 
     mapping(bytes32 => address) private oracles_;
 
-    constructor(address owner) {
+    constructor(
+        address owner,
+        OracleSelector[] memory selectors,
+        address[] memory oracles
+    ) {
         _transferOwnership(owner);
+        _registerBatch(selectors, oracles);
     }
 
     function oracle(
-        OracleSelector calldata selector
+        OracleSelector memory selector
     ) public view override returns (address) {
         return oracles_[_lookUpKey(selector)];
     }
 
     function register(
-        OracleSelector calldata selector,
+        OracleSelector memory selector,
         address _oracle
     ) external onlyOwner {
         _register(selector, _oracle);
@@ -42,18 +47,15 @@ contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
     }
 
     function registerBatch(
-        OracleSelector[] calldata selectors,
+        OracleSelector[] memory selectors,
         address[] memory oracles
-    ) public onlyOwner {
-        require(selectors.length == oracles.length, "HEXL001");
-        for (uint256 i = 0; i < oracles.length; i++) {
-            _register(selectors[i], oracles[i]);
-        }
+    ) external onlyOwner {
+        _registerBatch(selectors, oracles);
         emit RegisterBatch(selectors, oracles);
     }
 
     function _register(
-        OracleSelector calldata selector,
+        OracleSelector memory selector,
         address _oracle
     ) internal {
         require(selector.identityType != 0 && _oracle != address(0), "HEXL002");
@@ -61,8 +63,18 @@ contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
         oracles_[_lookUpKey(selector)] = _oracle;
     }
 
+    function _registerBatch(
+        OracleSelector[] memory selectors,
+        address[] memory oracles
+    ) internal {
+        require(selectors.length == oracles.length, "HEXL001");
+        for (uint256 i = 0; i < oracles.length; i++) {
+            _register(selectors[i], oracles[i]);
+        }
+    }
+
     function _lookUpKey(
-        OracleSelector calldata selector
+        OracleSelector memory selector
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(selector));
     }

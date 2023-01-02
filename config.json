@@ -10,6 +10,10 @@
            "swapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
            "wrapped": "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6",
            "dai": "0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844"
+      },
+      "oracles": {
+          "EMAIL_OTP": "0xF514Ae7306652DcCb3B215AcE1396aaee2B3C204",
+          "TWITTER_OAUTH": "0x8dd83bfB002baD8589a7C4dcDA40cd5E6430e533"
       }
   }
 }

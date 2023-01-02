@@ -21,23 +21,23 @@ contract SimpleIdentityOracle is IERC1271, Ownable {
         bool[] registered
     );
 
-    event Clone(address indexed cloned);
+    event Cloned(address indexed cloned);
 
     mapping(address => bool) validators_;
 
-    constructor(address owner) {
-        _transferOwnership(owner);
-    }
-
-    function clone(bytes32 salt, address owner) external {
+    function clone(bytes32 salt) external {
         address oracle = Clones.cloneDeterministic(address(this), salt);
-        SimpleIdentityOracle(oracle).init(owner);
-        emit Clone(oracle);
+        emit Cloned(oracle);
     }
 
-    function init(address owner) external {
+    function init(
+        address owner,
+        address[] memory validators,
+        bool[] memory registered
+    ) external {
         require(_owner() == address(0), "HEXL015");
         _transferOwnership(owner);
+        _registerBatch(validators, registered);
     }
 
     function isRegistered(address validator) external view returns (bool) {
@@ -56,10 +56,17 @@ contract SimpleIdentityOracle is IERC1271, Ownable {
         address[] memory validators,
         bool[] memory registered
     ) public onlyOwner {
+        _registerBatch(validators, registered);
+        emit RegisterBatch(validators, registered);
+    }
+
+    function _registerBatch(
+        address[] memory validators,
+        bool[] memory registered
+    ) internal {
         for (uint i = 0; i < validators.length; i++) {
             _register(validators[i], registered[i]);
         }
-        emit RegisterBatch(validators, registered);
     }
 
     function _register(
