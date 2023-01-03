@@ -15,14 +15,23 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   // deploy account beacon contract
-  const accountImpl = await hre.deployments.get("AccountSimple");
-  const admin = await hre.deployments.get("HexlinkAdmin");
-  await deploy("AccountBeacon", {
-    from: deployer,
-    args: [accountImpl.address, admin.address],
-    log: true,
-    autoMine: true,
-  });
+  try {
+    await deployments.get("HexlinkProxy");
+    console.log(
+      "AccountBeacon is already deployed, please " + 
+      "upgrade instead of deploying a new one"
+    );
+    return;
+  } catch {
+    const accountImpl = await hre.deployments.get("AccountSimple");
+    const admin = await hre.deployments.get("HexlinkAdmin");
+    await deploy("AccountBeacon", {
+      from: deployer,
+      args: [accountImpl.address, admin.address],
+      log: true,
+      autoMine: true,
+    });
+  }
 
   // deploy beacon proxy contract
   const beacon = await hre.deployments.get("AccountBeacon");

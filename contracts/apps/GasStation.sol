@@ -13,13 +13,13 @@ contract GasStation {
     event Deposit(address indexed from, uint256 amount);
     event Payment(address indexed from, address indexed to, uint256 amount);
     event Withdraw(address indexed to, uint256 amount);
-    event Approval(address indexed from, address indexed operator, bool approval);
+    event Approval(address indexed from, address indexed operator, uint256 allowance);
 
     ISwapRouter public immutable swapRouter;
     address public immutable wrapped;
-    mapping(address => uint256) private deposits_;
+    mapping(address => uint256) private balances_;
     // owner => operator => approved
-    mapping(address => mapping(address => bool)) private approval_;
+    mapping(address => mapping(address => uint256)) private allowances_;
 
     constructor(address _swapRouter, address _wrapped) {
         swapRouter = ISwapRouter(_swapRouter);
@@ -27,7 +27,7 @@ contract GasStation {
     }
 
     function deposit() external payable {
-        deposits_[msg.sender] += msg.value;
+        balances_[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
 
@@ -52,34 +52,43 @@ contract GasStation {
         }
         // unwrap as eth
         wrapped.functionCall(abi.encodeWithSignature('withdraw(uint256)', amount));
-        deposits_[msg.sender] += amount;
+        balances_[msg.sender] += amount;
         emit Deposit(msg.sender, amount);
     }
 
     function withdraw(uint256 amount) external {
-         deposits_[msg.sender] -= amount;
+         balances_[msg.sender] -= amount;
          Address.sendValue(payable(msg.sender), amount);
          emit Withdraw(msg.sender, amount);
     }
 
-    function approve(address operator, bool approval) external {
-        approval_[msg.sender][operator] = approval;
-        emit Approval(msg.sender, operator, approval);
+    function increaseAllowance(address operator, uint256 amount) external {
+        uint256 balance = allowances_[msg.sender][operator];
+        allowances_[msg.sender][operator] = balance + amount;
+        emit Approval(msg.sender, operator, balance + amount);
+    }
+
+    function decreaesAllowance(address operator, uint256 amount) external {
+        uint256 balance = allowances_[msg.sender][operator];
+        if (balance < amount) {
+            amount = balance;
+        }
+        unchecked { allowances_[msg.sender][operator] = balance - amount; }
+        emit Approval(msg.sender, operator, balance - amount);
     }
 
     function pay(address from, address to, uint amount) external {
-        require(from == msg.sender || approved(msg.sender, from), "Unauthorized");
-        require(deposits_[from] >= amount, "Insufficient balance");
-        unchecked { deposits_[from] -= amount; }
+        require(from == msg.sender || allowance(msg.sender, from) > amount, "Unauthorized");
+        balances_[from] -= amount;
         Address.sendValue(payable(to), amount);
         emit Payment(from, to, amount);
     }
 
     function depositOf(address user) external view returns(uint256) {
-        return deposits_[user];
+        return balances_[user];
     }
 
-    function approved(address owner, address operator) public view returns (bool) {
-        return approval_[owner][operator];
+    function allowance(address owner, address operator) public view returns (uint256) {
+        return allowances_[owner][operator];
     }
 }

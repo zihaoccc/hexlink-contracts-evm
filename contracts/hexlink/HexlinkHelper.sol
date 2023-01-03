@@ -54,21 +54,31 @@ contract HexlinkHelper {
 
     function deployAndCreateRedPacket(
         bytes32 name,
+        bytes calldata initData,
         bytes calldata txData,
         AuthProof calldata proof,
-        address owner,
         address packetToken,
         uint256 packetTokenAmount,
         address gasToken,
-        uint256 gasTokenAmount
-    ) external {
-        address account = hexlink.addressOfName(name);
-        if (packetToken != address(0)) {
-            IERC20(packetToken).transferFrom(owner, account, packetTokenAmount);
+        uint256 gasSponsorAmount,
+        uint256 gasEstimation
+    ) external payable {
+        address account = hexlink.deploy(name, initData, proof);
+        Address.sendValue(payable(account), msg.value);
+        uint256 balance = account.balance;
+        if (packetToken == address(0)) {
+            require(
+                balance >= packetTokenAmount,
+                "Insuffient balance for red packet"
+            );
+            balance -= packetTokenAmount;
         }
-        if (gasToken != address(0)) {
-            IERC20(gasToken).transferFrom(owner, account, gasTokenAmount);
+        if (gasToken == address(0)) {
+            require(
+                balance >= gasSponsorAmount + gasEstimation,
+                "Insuffient balance for gas"
+            );
         }
-        hexlink.deploy(name, txData, proof);
+        account.functionCall(txData);
     }
 }

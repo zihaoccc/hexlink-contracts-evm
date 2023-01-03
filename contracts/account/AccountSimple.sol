@@ -12,8 +12,7 @@ contract AccountSimple is AccountBase {
     struct GasObject {
         address token;
         uint256 price;
-        uint256 core;
-        uint256 base;
+        uint256 refund;
         address payable refundReceiver;
     }
 
@@ -35,20 +34,20 @@ contract AccountSimple is AccountBase {
         uint256 _nonce,
         bytes calldata signature
     ) external {
-        uint256 gasUsed = gasleft();
         bytes32 requestId = keccak256(abi.encode(txData, gas, nonce_));
         require(nonce_++ == _nonce, "HEXLA008");
         _validateSignature(requestId, signature);
-        uint256 gaslimit = gas.core == 0 ? gasleft() : gas.core;
-        (bool success,) = address(this).call{gas: gaslimit}(txData);
+        (bool success,) = address(this).call(txData);
         require(success, "HEXLA009");
-        uint256 payment = _handleGasPayment(
-            gasUsed - gasleft() + gas.base,
-            gas.token,
-            gas.price,
-            gas.refundReceiver
-        );
-        emit GasPayment(requestId, payment);
+        if (gas.refund > 0) {
+            uint256 payment = _handleGasPayment(
+                gas.refund,
+                gas.token,
+                gas.price,
+                gas.refundReceiver
+            );
+            emit GasPayment(requestId, payment);
+        }
     }
 
     function _validateCaller() internal view override {

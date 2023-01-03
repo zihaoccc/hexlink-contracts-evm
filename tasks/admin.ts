@@ -329,3 +329,22 @@ task("upgrade_hexlink", "upgrade hexlink contract")
             await hre.run("admin_schedule_or_exec", { target: hexlink.address, data });
         }
     });
+
+task("upgrade_account_impl", "upgrade account implementation")
+    .addParam("impl")
+    .addFlag("waitForExec")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await hre.deployments.get("AccountBeacon");
+        const beacon = await hre.ethers.getContractAt(
+            "AccountBeacon", deployment.address
+        );
+        const data = beacon.interface.encodeFunctionData(
+            "upgradeTo",
+            [args.impl]
+        );
+        if (args.waitForExec) {
+            await hre.run("admin_schedule_and_exec", { target: beacon.address, data });
+        } else {
+            await hre.run("admin_schedule_or_exec", { target: beacon.address, data });
+        }
+    });

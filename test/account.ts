@@ -241,15 +241,14 @@ describe("Hexlink Account", function() {
     const gas = {
       token: ethers.constants.AddressZero,
       price: 0,
-      base: 50000, // in react it's around 36000 for payment and event emitting
-      core: 0,
+      refund: 150000,
       refundReceiver: receiverAddr,
     };
     const nonce = await account.nonce();
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "tuple(address, uint256, uint256, uint256, address payable)", "uint256"],
-        [data, [gas.token, gas.price, gas.core, gas.base, gas.refundReceiver], nonce]
+        ["bytes", "tuple(address, uint256, uint256, address payable)", "uint256"],
+        [data, [gas.token, gas.price, gas.refund, gas.refundReceiver], nonce]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -306,15 +305,14 @@ describe("Hexlink Account", function() {
     const gas = {
       token: token.address,
       price: 1,
-      base: 50000, // in react it's around 36000 for payment and event emitting
-      core: 0,
+      refund: 150000,
       refundReceiver: receiverAddr,
     };
     const nonce = await account.nonce();
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "tuple(address, uint256, uint256, uint256, address payable)", "uint256"],
-        [data, [gas.token, gas.price, gas.core, gas.base, gas.refundReceiver], nonce]
+        ["bytes", "tuple(address, uint256, uint256, address payable)", "uint256"],
+        [data, [gas.token, gas.price, gas.refund, gas.refundReceiver], nonce]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)

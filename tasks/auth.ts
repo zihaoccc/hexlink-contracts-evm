@@ -77,7 +77,7 @@ task("build_deploy_auth_proof", "build auth proof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre);
         const signers = await hre.ethers.getNamedSigners();
-        const validator = args.validator ? signers[args.validator] : signers.validator,
+        const validator = args.validator ? signers[args.validator] : signers.validator;
         const data = args.data ? args.data : [];
         const identityType = args.identityType ? Number(args.identityType) : 1;
         const authType = args.authType ? Number(args.authType) : 1;
@@ -104,7 +104,7 @@ task("build_reset_auth_proof", "build auth proof")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre);
         const signers = await hre.ethers.getNamedSigners();
-        const validator = args.validator ? signers[args.validator] : signers.validator,
+        const validator = args.validator ? signers[args.validator] : signers.validator;
         const data = ethers.utils.defaultAbiCoder.encode(
             ["address"], [args.account]
         );
