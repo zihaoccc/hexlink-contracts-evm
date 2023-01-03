@@ -5,8 +5,8 @@ pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./AuthProof.sol";
 import "./IIdentityOracleRegistry.sol";
+import "../Structs.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;

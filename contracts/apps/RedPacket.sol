@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "../Structs.sol";
 
 contract RedPacket {
     using ECDSA for bytes32;
@@ -16,8 +17,7 @@ contract RedPacket {
         address creator,
         address token,
         bytes32 salt,
-        uint256 amount,
-        uint32 split
+        Packet packet
     );
     event PacketClaimed(
         bytes32 indexed PacketId,
@@ -25,13 +25,6 @@ contract RedPacket {
         uint amount
     );
 
-    struct Packet {
-        uint256 balance;
-        address validator;
-        uint64 expiredAt; // 0 means never expire
-        uint24 split;
-        uint8 mode; // 0: not_set, 1: fixed, 2: randomized
-    }
     // user => PacketId => Packet as Packet
     mapping(bytes32 => Packet) internal packets_;
     mapping(bytes32 => mapping(address => uint256)) internal count_;
@@ -39,25 +32,21 @@ contract RedPacket {
     function create(
         address token,
         bytes32 salt, // to identity a specific red Packet
-        uint256 amount,
-        address validator,
-        uint64 expiredAt,
-        uint24 split,
-        uint8 mode
+        Packet memory packet
     ) external payable {
         bytes32 PacketId = keccak256(abi.encode(msg.sender, token, salt));
         require(packets_[PacketId].mode == 0, "Packet already exists");
-        require(mode == 1 || mode == 2, "Invalid mode");
+        require(packet.mode == 1 || packet.mode == 2, "Invalid mode");
         if (token != address(0)) {
-            IERC20(token).transferFrom(msg.sender, address(this), amount);
+            IERC20(token).transferFrom(msg.sender, address(this), packet.balance);
         } else {
-            require(msg.value == amount, "Packet value mismatch");
+            require(msg.value == packet.balance, "Packet value mismatch");
         }
-        packets_[PacketId] = Packet(amount, validator, expiredAt, split, mode);
-        emit PacketCreated(PacketId, msg.sender, token, salt, amount, split);
+        packets_[PacketId] = packet;
+        emit PacketCreated(PacketId, msg.sender, token, salt, packet);
     }
 
-    function packet(bytes32 id) external view returns(Packet memory) {
+    function getPacket(bytes32 id) external view returns(Packet memory) {
         return packets_[id];
     }
 

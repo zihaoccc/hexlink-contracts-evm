@@ -13,3 +13,11 @@ struct AuthProof{
     uint256 authType;
     bytes signature; // aggregated signature
 }
+
+struct Packet {
+    uint256 balance;
+    address validator;
+    uint64 expiredAt; // 0 means never expire
+    uint24 split;
+    uint8 mode; // 0: not_set, 1: fixed, 2: randomized
+}

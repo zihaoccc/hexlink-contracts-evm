@@ -16,7 +16,6 @@ const getHexlink = async function() {
 
 const buildDeployAuthProof = async function(params: {
   name: string,
-  hexlink?: string,
   data?: string,
   validator?: string,
   nonce?: string
@@ -27,7 +26,6 @@ const buildDeployAuthProof = async function(params: {
 const buildResetAuthProof = async function(params: {
   name: string,
   account: string,
-  hexlink?: string,
   validator?: string,
   nonce?: string
 }) {
@@ -45,9 +43,7 @@ describe("Hexlink", function() {
     const name = sender;
     const accountAddr = await hexlink.addressOfName(name);
   
-    const authProof = await buildDeployAuthProof({
-      name, hexlink: hexlink.address
-    });
+    const authProof = await buildDeployAuthProof({name});
     await expect(
       hexlink.deploy(name, [], authProof)
     ).to.emit(hexlink, "Deploy").withArgs(
@@ -80,8 +76,7 @@ describe("Hexlink", function() {
     let invalidAuthProof = await buildDeployAuthProof({
       name,
       data,
-      validator: "deployer",
-      hexlink: hexlink.address
+      validator: "deployer"
     });
     await expect(
       hexlink.reset(name, validator.address, invalidAuthProof)
@@ -92,7 +87,6 @@ describe("Hexlink", function() {
       name,
       data,
       validator: "validator",
-      hexlink: hexlink.address,
       nonce: "1"
     });
 
@@ -105,7 +99,6 @@ describe("Hexlink", function() {
       name,
       data,
       validator: "validator",
-      hexlink: hexlink.address
     });
     await expect(
       hexlink.deploy(name, [], validAuthProof)
@@ -148,8 +141,7 @@ describe("Hexlink", function() {
     const authProof2 = await buildDeployAuthProof({
       name,
       data,
-      validator: "validator",
-      hexlink: hexlink.address
+      validator: "validator"
     });
     await expect(hexlink.connect(deployer).deploy(name, data, authProof2))
     .to.be.revertedWith("ERC1167: create2 failed");
@@ -158,8 +150,7 @@ describe("Hexlink", function() {
     const authProof3 = await buildResetAuthProof({
       name,
       account: deployer.address,
-      validator: "validator",
-      hexlink: hexlink.address
+      validator: "validator"
     });
 
     await expect(
@@ -177,8 +168,7 @@ describe("Hexlink", function() {
     let validAuthProof = await buildResetAuthProof({
       name,
       account: address0,
-      validator: "validator",
-      hexlink: hexlink.address
+      validator: "validator"
     });
     await expect(
       hexlink.reset(name, address0, validAuthProof)
@@ -188,8 +178,7 @@ describe("Hexlink", function() {
     let invalidAuthProof = await buildResetAuthProof({
       name,
       account: deployer.address,
-      validator: "deployer",
-      hexlink: hexlink.address
+      validator: "deployer"
     });
     await expect(
       hexlink.reset(name, validator.address, invalidAuthProof)
@@ -200,7 +189,6 @@ describe("Hexlink", function() {
       name,
       account: deployer.address,
       validator: "validator",
-      hexlink: hexlink.address,
       nonce: "1"
     });
     await expect(
@@ -212,7 +200,6 @@ describe("Hexlink", function() {
       name,
       account: deployer.address,
       validator: "validator",
-      hexlink: hexlink.address
     });
     await expect(
       hexlink.reset(name, validator.address, validAuthProof)
@@ -252,8 +239,7 @@ describe("Hexlink", function() {
     const validAuthProof2 = await buildResetAuthProof({
       name,
       account: deployer.address,
-      validator: "validator",
-      hexlink: hexlink.address
+      validator: "validator"
     });
     await expect(
       hexlink.reset(name, validator.address, validAuthProof2)
@@ -267,7 +253,6 @@ describe("Hexlink", function() {
       name,
       data,
       validator: "validator",
-      hexlink: hexlink.address
     });
     await expect(
       hexlink.deploy(name, data, validAuthProof4)

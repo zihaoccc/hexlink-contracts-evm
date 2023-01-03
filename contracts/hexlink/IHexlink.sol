@@ -4,7 +4,7 @@
 pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "../auth/AuthProof.sol";
+import "../Structs.sol";
 
 interface IHexlink {
     function accountBase() external view returns (address);

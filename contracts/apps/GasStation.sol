@@ -26,7 +26,7 @@ contract GasStation {
         wrapped = _wrapped;
     }
 
-    function depositNativeCoin() external payable {
+    function deposit() external payable {
         deposits_[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }

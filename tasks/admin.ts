@@ -309,3 +309,23 @@ task("set_oracle_registry", "set oracle registry")
             await hre.run("admin_schedule_or_exec", { target: hexlink.address, data });
         }
     });
+
+task("upgrade_hexlink", "upgrade hexlink contract")
+    .addFlag("waitForExec")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const impl = await hre.deployments.get("HexlinkUpgradeable");
+        const proxy = await hre.deployments.get("HexlinkProxy");
+        const hexlink = await hre.ethers.getContractAt(
+            "UUPSUpgradeable", proxy.address
+        );
+        // upgrade hexlink proxy
+        const data = hexlink.interface.encodeFunctionData(
+            "upgradeTo",
+            [impl.address]
+        );
+        if (args.waitForExec) {
+            await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
+        } else {
+            await hre.run("admin_schedule_or_exec", { target: hexlink.address, data });
+        }
+    });
