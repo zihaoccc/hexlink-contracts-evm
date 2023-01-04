@@ -24,17 +24,17 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     autoMine: true
   });
 
-  await deploy("RedPacket", {
+  const gasStation = await deployments.get("GasStation");
+  await deploy("HappyRedPacket", {
     from: deployer,
-    args: [],
+    args: [gasStation.address],
     log: true,
     autoMine: true
   });
 
   // deploy hexlink helper
   const hexlink = await deployments.get("HexlinkProxy");
-  const gasStation = await deployments.get("GasStation");
-  const redPacket = await deployments.get("RedPacket");
+  const redPacket = await deployments.get("HappyRedPacket");
   await deploy("HexlinkHelper", {
     from: deployer,
     args: [

@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAccount.sol";
-import "hardhat/console.sol";
 
 abstract contract AccountBase is IERC1271, IAccount, Ownable {
     using Address for address;
@@ -56,8 +55,6 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
 
     function _validateSignature(bytes32 message, bytes calldata signature) internal view {
         address signer = owner();
-        console.logBytes32(message);
-        console.log(signer);
         bytes32 reqHash = message.toEthSignedMessageHash();
         if (signer.isContract()) {
             try IERC1271(signer).isValidSignature(reqHash, signature) returns (bytes4 returnvalue) {

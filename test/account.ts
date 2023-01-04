@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run } from "hardhat";
-import { Contract } from "ethers";
+import { Contract, BigNumber } from "ethers";
 
 const namehash = function(name: string) : string {
   return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -50,7 +50,7 @@ const deployAccount = async function(
 describe("Hexlink Account", function() {
   beforeEach(async function() {
     const { deployer } = await ethers.getNamedSigners();
-    await deployments.fixture(["ADMIN", "ACCOUNT", "TEST"]);
+    await deployments.fixture(["HEXL"]);
     const proxy = await getContract("AccountProxy");
     // deploy test deployer
     await deployments.deploy("TestAccountDeployer", {
@@ -206,7 +206,7 @@ describe("Hexlink Account", function() {
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });
 
-  it("Should pay gas with eth", async function() {
+  it("Should pay gas with gas station", async function() {
     const accountDeployer = await getContract("TestAccountDeployer");
     const account = await deployAccount(sender, accountDeployer);
     const token = await getContract("HexlinkToken");
@@ -222,116 +222,73 @@ describe("Hexlink Account", function() {
     });
 
     // token transfer with validateAndCall
-    const tokenSendingData = token.interface.encodeFunctionData(
-        "transfer",
-        [tester.address, 100]
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
+    const estimatedGas = 200000;
+    const gasStation = await ethers.getContractAt(
+      "GasStation",
+      (await deployments.get("GasStation")).address
     );
     const data = account.interface.encodeFunctionData(
-        "exec",
+        "execBatch",
         [
-          {
-            to: token.address,
-            value: 0,
-            callData: tokenSendingData,
-            callGasLimit: 0
-          }
+          [
+            {
+              to: token.address,
+              value: 0,
+              callData: token.interface.encodeFunctionData(
+                "transfer",
+                [tester.address, 100]
+              ),
+              callGasLimit: 0
+            },
+            {
+              to: account.address,
+              value: 0,
+              callData: account.interface.encodeFunctionData(
+                "depositGas",
+                [gasStation.address, estimatedGas]
+              ),
+              callGasLimit: 0
+            },
+            {
+              to: gasStation.address,
+              value: 0,
+              callData: gasStation.interface.encodeFunctionData(
+                "pay",
+                [account.address, receiverAddr, estimatedGas]
+              ),
+              callGasLimit: 0
+            }
+          ]
         ]
     );
-    const receiverAddr = await accountDeployer.addressOfName(receiver);
-    const gas = {
-      token: ethers.constants.AddressZero,
-      price: 0,
-      refund: 150000,
-      refundReceiver: receiverAddr,
-    };
     const nonce = await account.nonce();
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "tuple(address, uint256, uint256, address payable)", "uint256"],
-        [data, [gas.token, gas.price, gas.refund, gas.refundReceiver], nonce]
+        ["bytes", "uint256"],
+        [data, nonce]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
     );
-    const tx = await account.connect(validator).validateAndCall(
-      data, gas, nonce, signature
-    );
 
+    const tx = await account.connect(validator).validateAndCall(data, nonce, signature);
     const receipt = await tx.wait();
     const events = receipt.logs.filter(
-      log => log.address == account.address
-    ).map((log: any) => account.interface.parseLog(log));
-    const event = events.find((e: any) => e.name == "GasPayment");
-    expect(event.args.request).to.eq(requestId);
-    
+      log => log.address == gasStation.address
+    ).map((log: any) => gasStation.interface.parseLog(log));
+    const event = events.find((e: any) => e.name == "Payment");
+    const payment = receipt.effectiveGasPrice.mul(estimatedGas);
+    expect(event.args.from).to.eq(account.address);
+    expect(event.args.to).to.eq(receiverAddr);
+    expect(event.args.amount).to.eq(payment);
+
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
-    ).to.eq(event.args.payment);
+    ).to.eq(payment);
     expect(
       await ethers.provider.getBalance(account.address)
-    ).to.eq(balance.sub(event.args.payment));
-    // check token balance
-    expect(await token.balanceOf(tester.address)).to.eq(100);
-    expect(await token.balanceOf(account.address)).to.eq(4900);
-  });
-
-  it("Should pay gas with erc20", async function() {
-    const accountDeployer = await getContract("TestAccountDeployer");
-    const account = await deployAccount(sender, accountDeployer);
-    const token = await getContract("HexlinkToken");
-    const { deployer, validator, tester } = await ethers.getNamedSigners();
-
-    // send token to account
-    await token.connect(deployer).transfer(account.address, 200000);
-
-    // token transfer with validateAndCall
-    const tokenSendingData = token.interface.encodeFunctionData(
-        "transfer",
-        [tester.address, 100]
-    );
-    const data = account.interface.encodeFunctionData(
-        "exec",
-        [
-          {
-            to: token.address,
-            value: 0,
-            callData: tokenSendingData,
-            callGasLimit: 0
-          }
-        ]
-    );
-    const receiverAddr = await accountDeployer.addressOfName(receiver);
-    const gas = {
-      token: token.address,
-      price: 1,
-      refund: 150000,
-      refundReceiver: receiverAddr,
-    };
-    const nonce = await account.nonce();
-    const requestId = ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "tuple(address, uint256, uint256, address payable)", "uint256"],
-        [data, [gas.token, gas.price, gas.refund, gas.refundReceiver], nonce]
-      ));
-    const signature = await deployer.signMessage(
-      ethers.utils.arrayify(requestId)
-    );
-    const tx = await account.connect(validator).validateAndCall(
-      data, gas, nonce, signature
-    );
-
-    const receipt = await tx.wait();
-    const events = receipt.logs.filter(
-      log => log.address == account.address
-    ).map((log: any) => account.interface.parseLog(log));
-    const event = events.find((e: any) => e.name == "GasPayment");
-    expect(event.args.request).to.eq(requestId);
-    
-    // check token balance
-    expect(await token.balanceOf(receiverAddr)).to.eq(event.args.payment);
-    expect(await token.balanceOf(account.address)).to.eq(
-      200000 - 100 - event.args.payment.toNumber()
-    );
+    ).to.eq(balance.sub(payment));
   });
 });

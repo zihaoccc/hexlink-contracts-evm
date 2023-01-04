@@ -14,10 +14,13 @@ struct AuthProof{
     bytes signature; // aggregated signature
 }
 
-struct Packet {
-    uint256 balance;
-    address validator;
+struct RedPacket {
+    address token;
     uint64 expiredAt; // 0 means never expire
-    uint24 split;
+    uint32 split;
+    uint256 balance;
+    address creator;
+    address validator;
     uint8 mode; // 0: not_set, 1: fixed, 2: randomized
+    bool enableGasStation;
 }

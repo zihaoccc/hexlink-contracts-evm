@@ -18,7 +18,7 @@ contract GasStation {
     ISwapRouter public immutable swapRouter;
     address public immutable wrapped;
     mapping(address => uint256) private balances_;
-    // owner => operator => approved
+    // owner => operator => allowance
     mapping(address => mapping(address => uint256)) private allowances_;
 
     constructor(address _swapRouter, address _wrapped) {
@@ -77,11 +77,12 @@ contract GasStation {
         emit Approval(msg.sender, operator, balance - amount);
     }
 
-    function pay(address from, address to, uint amount) external {
-        require(from == msg.sender || allowance(msg.sender, from) > amount, "Unauthorized");
-        balances_[from] -= amount;
-        Address.sendValue(payable(to), amount);
-        emit Payment(from, to, amount);
+    function pay(address from, address to, uint256 amount) external {
+        uint256 payment = amount * tx.gasprice;
+        require(from == msg.sender || allowance(msg.sender, from) > payment, "Unauthorized");
+        balances_[from] -= payment;
+        Address.sendValue(payable(to), payment);
+        emit Payment(from, to, payment);
     }
 
     function depositOf(address user) external view returns(uint256) {

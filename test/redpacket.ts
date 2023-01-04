@@ -27,7 +27,7 @@ describe("Hexlink Account", function() {
       await deployments.fixture(["HEXL"]);
     });
 
-    it("Should deploy account and create red packet successfully", async function() {
+    it("erc20 as packet token and eth as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
         const packet = {
             balance: 10000,
@@ -36,7 +36,7 @@ describe("Hexlink Account", function() {
             split: 10,
             mode: 2,
         };
-        const redPacket = await deployments.get("RedPacket");
+        const redPacket = await deployments.get("HappyRedPacket");
         const gasStation = await deployments.get("GasStation");
         const hexlinkToken = await deployments.get("HexlinkToken");
     
@@ -106,24 +106,28 @@ describe("Hexlink Account", function() {
             callGasLimit: 0 // no limit
         };
 
+        // build op to whitelist red packet for gas station
+        const op6 = {
+            to: gasStation.address,
+            value: 0,
+            callData: gasStationIface.encodeFunctionData(
+                "pay", [validator.address, gasAmount]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
         // build txData for execBatch
         const data = (await iface("AccountSimple")).encodeFunctionData(
             "execBatch",
-            [[op1, op2, op3, op4, op5]]
+            [[op1, op2, op3, op4, op5, op6]]
         );
 
         // build txData for validateAndCall
-        const gas = {
-            token: gasToken,
-            price: 0, // use tx.gasprice
-            refund: 800000,
-            refundReceiver: validator.address
-        };
         const nonce = 0;
         const requestId = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "tuple(address,uint256,uint256,address payable)", "uint256"],
-                [data, [gas.token, gas.price, gas.refund, gas.refundReceiver], nonce]
+                ["bytes", "uint256"],
+                [data, nonce]
             )
         );
         const signature = await tester.signMessage(
@@ -131,7 +135,7 @@ describe("Hexlink Account", function() {
         );
         const txData = (await iface("AccountSimple")).encodeFunctionData(
             "validateAndCall",
-            [data, gas, nonce, signature]
+            [data, nonce, signature]
         );
 
         // deploy and call

@@ -45,6 +45,7 @@ task("hexlink_check", "check hexlink metadata")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre);
         const result = {
+            "address": hexlink.address,
             "accountBase": await hexlink.accountBase(),
             "oracleRegistry": await hexlink.oracleRegistry(),
             "authConfig": {
@@ -63,7 +64,9 @@ task("account", "Prints account address")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const nameHash = genNameHash(args.name);
         const hexlink = await getHexlink(hre);
+        console.log("name hash is " + nameHash);
         const account = await hexlink.addressOfName(nameHash);
+        console.log("account is " + account);
         return account;
     });
 

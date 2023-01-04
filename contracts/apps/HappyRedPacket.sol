@@ -8,97 +8,96 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../Structs.sol";
 
-contract RedPacket {
+contract HappyRedPacket {
     using ECDSA for bytes32;
     using Address for address;
 
-    event PacketCreated(
+    event Created(
         bytes32 indexed PacketId,
-        address creator,
-        address token,
-        bytes32 salt,
-        Packet packet
+        RedPacket packet
     );
-    event PacketClaimed(
+    event Claimed(
         bytes32 indexed PacketId,
         address claimer,
         uint amount
     );
 
     // user => PacketId => Packet as Packet
-    mapping(bytes32 => Packet) internal packets_;
+    mapping(bytes32 => RedPacket) internal packets_;
     mapping(bytes32 => mapping(address => uint256)) internal count_;
+    address immutable public gasStation;
+
+    constructor(address _gasStation) {
+        gasStation = _gasStation;
+    }
 
     function create(
         address token,
         bytes32 salt, // to identity a specific red Packet
-        Packet memory packet
+        RedPacket memory packet
     ) external payable {
-        bytes32 PacketId = keccak256(abi.encode(msg.sender, token, salt));
-        require(packets_[PacketId].mode == 0, "Packet already exists");
+        bytes32 packetId = keccak256(abi.encode(msg.sender, token, salt));
+        require(packets_[packetId].mode == 0, "RedPacket already exists");
         require(packet.mode == 1 || packet.mode == 2, "Invalid mode");
+        require(packet.creator == msg.sender, "Invalid creator");
         if (token != address(0)) {
             IERC20(token).transferFrom(msg.sender, address(this), packet.balance);
         } else {
-            require(msg.value == packet.balance, "Packet value mismatch");
+            require(msg.value >= packet.balance, "Insufficient balance");
         }
-        packets_[PacketId] = packet;
-        emit PacketCreated(PacketId, msg.sender, token, salt, packet);
+        packets_[packetId] = packet;
+        emit Created(packetId, packet);
     }
 
-    function getPacket(bytes32 id) external view returns(Packet memory) {
+    function getPacket(bytes32 id) external view returns(RedPacket memory) {
         return packets_[id];
     }
 
     function refund(address token, bytes32 salt) external {
-        bytes32 PacketId = keccak256(abi.encode(msg.sender, token, salt));
-        _transfer(token, msg.sender, packets_[PacketId].balance);
-        packets_[PacketId].balance = 0;
+        bytes32 packetId = keccak256(abi.encode(msg.sender, token, salt));
+        _transfer(token, msg.sender, packets_[packetId].balance);
+        packets_[packetId].balance = 0;
     }
 
     function claim(
-        address from,
-        address token,
-        bytes32 salt,
+        bytes32 packetId,
         address claimer,
-        address gasStation, // 0 means do not use gas station
         address refundReceiver,
         bytes calldata signature
     ) external {
         uint256 gasUsed = gasleft();
-        bytes32 PacketId = keccak256(abi.encode(from, token, salt));
-        Packet memory p = packets_[PacketId];
+        RedPacket memory p = packets_[packetId];
         require(p.balance > 0 && p.split > 0, "Empty Packet");
         require(p.expiredAt == 0 || p.expiredAt > block.timestamp, "Packet Expired");
 
         // validate claimer
-        require(count_[PacketId][claimer] == 0, "Already claimed");
+        require(count_[packetId][claimer] == 0, "Already claimed");
         bytes32 message = keccak256(
-            abi.encode(PacketId, claimer, gasStation, refundReceiver)
+            abi.encode(packetId, claimer, refundReceiver)
         );
         bytes32 reqHash = message.toEthSignedMessageHash();
         require(p.validator == reqHash.recover(signature), "Invalid signature");
-        count_[PacketId][claimer] += 1;
+        count_[packetId][claimer] += 1;
 
         // claim red Packet
         uint256 claimed = _claimd(claimer, p);
-        packets_[PacketId].balance = p.balance - claimed;
-        packets_[PacketId].split = p.split - 1;
-        _transfer(token, claimer, claimed);
-        emit PacketClaimed(PacketId, claimer, claimed);
+        packets_[packetId].balance = p.balance - claimed;
+        packets_[packetId].split = p.split - 1;
+        _transfer(p.token, claimer, claimed);
+        emit Claimed(packetId, claimer, claimed);
 
         // pay gas with gas station
-        if (gasStation != address(0)) {
-            uint256 payment = (gasUsed - gasleft() + 60000) * tx.gasprice;
+        if (p.enableGasStation) {
+            uint256 payment = gasUsed - gasleft() + 60000;
             bytes memory data = abi.encodeWithSignature(
-                "pay(address,address,uint256)", from, refundReceiver, payment
+                "pay(address,address,uint256)", p.creator, refundReceiver, payment
             );
             (bool success,) = gasStation.call{gas: 60000}(data);
-            require(success, "Failed to pay gas");
+            require(success, "Failed to refund gas");
         }
     }
 
-    function _claimd(address claimer, Packet memory p) internal view returns(uint256 claimed) {
+    function _claimd(address claimer, RedPacket memory p) internal view returns(uint256 claimed) {
         if (p.split == 1) {
             claimed = p.balance;
         } else if (p.mode == 1) { // fixed
