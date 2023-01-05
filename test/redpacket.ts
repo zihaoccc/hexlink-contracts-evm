@@ -1,5 +1,6 @@
 import { ethers, deployments, artifacts, run } from "hardhat";
 import { Contract, BigNumber } from "ethers";
+import { HexlinkToken__factory } from "../typechain";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -29,13 +30,7 @@ describe("Hexlink Account", function() {
 
     it("erc20 as packet token and eth as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
-        const packet = {
-            balance: 10000,
-            validator: validator.address,
-            expiredAt: Math.floor( Date.now() / 1000 ) + 3600,
-            split: 10,
-            mode: 2,
-        };
+
         const redPacket = await deployments.get("HappyRedPacket");
         const gasStation = await deployments.get("GasStation");
         const hexlinkToken = await deployments.get("HexlinkToken");
@@ -43,15 +38,27 @@ describe("Hexlink Account", function() {
         const packetSalt = ethers.constants.HashZero;
         const gasToken = ethers.constants.AddressZero;
         const gasPrice = await ethers.provider.getGasPrice();
-        const gasSponsorAmount = gasPrice.mul(150000).mul(packet.split);
         const gasAmount = BigNumber.from(1000000);
+
+        const hexlink = await getHexlink();
+        const accountAddr = await hexlink.addressOfName(sender);
+
+        const packet = {
+            token: hexlinkToken.address,
+            salt: ethers.constants.HashZero,
+            balance: 10000,
+            validator: validator.address,
+            expiredAt: Math.floor( Date.now() / 1000 ) + 3600,
+            split: 10,
+            mode: 2,
+            gasStation: gasStation.address,
+        };
+        const gasSponsorAmount = gasPrice.mul(150000).mul(packet.split);
 
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
         await token.connect(deployer).transfer(tester.address, 100000);
         // approve packet token
-        const hexlink = await getHexlink();
-        const accountAddr = await hexlink.addressOfName(sender);
         await token.connect(tester).approve(accountAddr, packet.balance);
     
         // build op to deposit eth to gas station
@@ -84,14 +91,14 @@ describe("Hexlink Account", function() {
             ),
             callGasLimit: 0 // no limit
         };
-    
+
         // build op to create red packet
-        const redPacketIface = await iface("RedPacket");
+        const redPacketIface = await iface("HappyRedPacket");
         const op4 = {
             to: redPacket.address,
             value: 0,
             callData: redPacketIface.encodeFunctionData(
-                "create", [hexlinkToken.address, packetSalt, packet]
+                "create", [packet]
             ),
             callGasLimit: 0 // no limit
         };
@@ -106,12 +113,18 @@ describe("Hexlink Account", function() {
             callGasLimit: 0 // no limit
         };
 
-        // build op to whitelist red packet for gas station
+        // build op to refund gas for tx sender
+        const accountIface = await iface("AccountSimple");
         const op6 = {
-            to: gasStation.address,
+            to: accountAddr,
             value: 0,
-            callData: gasStationIface.encodeFunctionData(
-                "pay", [validator.address, gasAmount]
+            callData: accountIface.encodeFunctionData(
+                "refundGas", [
+                    validator.address,
+                    ethers.constants.AddressZero,
+                    gasAmount,
+                    0,
+                ]
             ),
             callGasLimit: 0 // no limit
         };
@@ -138,12 +151,7 @@ describe("Hexlink Account", function() {
             [data, nonce, signature]
         );
 
-        // deploy and call
-
-        const hexlinkHelper = await getContract("HexlinkHelper");
-
         // build op to init account
-        const accountIface = await iface("AccountSimple");
         const initData = accountIface.encodeFunctionData(
             "init", [tester.address]
         );
@@ -155,16 +163,12 @@ describe("Hexlink Account", function() {
         });
 
         const options = { value: gasSponsorAmount.add(gasAmount) };
+        const hexlinkHelper = await getContract("HexlinkHelper");
         await hexlinkHelper.connect(tester).deployAndCreateRedPacket(
             sender,
             initData,
             txData,
             authProof,
-            hexlinkToken.address,
-            packet.balance,
-            gasToken,
-            gasSponsorAmount,
-            gasAmount,
             options
         );    
     });

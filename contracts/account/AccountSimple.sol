@@ -9,9 +9,8 @@ import "./AccountBase.sol";
 contract AccountSimple is AccountBase {
     using Address for address;
 
-    event GasPayment(bytes32 indexed request, uint256 payment);
     uint256 private nonce_;
-    
+
     function init(address owner) external {
         require(_owner() == address(0) && owner != address(0), "HEXL015");
         _transferOwnership(owner);
@@ -21,7 +20,7 @@ contract AccountSimple is AccountBase {
         return nonce_;
     }
 
-    function depositGas(
+    function depositGasTo(
         address gasStation,
         uint256 amount
     ) external returns(uint256) {
@@ -32,6 +31,28 @@ contract AccountSimple is AccountBase {
             payment
         );
         return payment;
+    }
+
+    function refundGas(
+        address payable receiver,
+        address token,
+        uint256 amount,
+        uint256 price
+    ) external returns (uint256 payment) {
+        _validateCaller();
+        if (token == address(0)) {
+            // price cannot be higher than tx.gasprice
+            if (price == 0) {
+                price = tx.gasprice;
+            } else {
+                price = price < tx.gasprice ? price : tx.gasprice;
+            }
+            payment = amount * tx.gasprice;
+            Address.sendValue(receiver, payment);
+        } else {
+            payment = amount * price;
+            IERC20(token).transfer(receiver, payment);
+        }
     }
 
     function validateAndCall(

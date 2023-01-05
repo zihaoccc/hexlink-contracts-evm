@@ -245,7 +245,7 @@ describe("Hexlink Account", function() {
               to: account.address,
               value: 0,
               callData: account.interface.encodeFunctionData(
-                "depositGas",
+                "depositGasTo",
                 [gasStation.address, estimatedGas]
               ),
               callGasLimit: 0

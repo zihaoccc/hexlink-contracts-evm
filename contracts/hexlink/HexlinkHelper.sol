@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./IHexlink.sol";
-import "../Structs.sol";
+import "../auth/AuthProof.sol";
 
 contract HexlinkHelper {
     using Address for address;
@@ -56,29 +56,10 @@ contract HexlinkHelper {
         bytes32 name,
         bytes calldata initData,
         bytes calldata txData,
-        AuthProof calldata proof,
-        address packetToken,
-        uint256 packetTokenAmount,
-        address gasToken,
-        uint256 gasSponsorAmount,
-        uint256 gasEstimation
+        AuthProof calldata proof
     ) external payable {
         address account = hexlink.deploy(name, initData, proof);
         Address.sendValue(payable(account), msg.value);
-        uint256 balance = account.balance;
-        if (packetToken == address(0)) {
-            require(
-                balance >= packetTokenAmount,
-                "Insuffient balance for red packet"
-            );
-            balance -= packetTokenAmount;
-        }
-        if (gasToken == address(0)) {
-            require(
-                balance >= gasSponsorAmount + gasEstimation,
-                "Insuffient balance for gas"
-            );
-        }
         account.functionCall(txData);
     }
 }
