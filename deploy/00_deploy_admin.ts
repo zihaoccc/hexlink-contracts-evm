@@ -1,7 +1,7 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import {DeployFunction} from "hardhat-deploy/types";
 import * as config from '../config.json';
-import ethers from "ethers";
+import { ethers } from "ethers";
 
 const getAdminConfig = async function(hre: HardhatRuntimeEnvironment) {
     let netConf = config[hre.network.name as keyof typeof config];

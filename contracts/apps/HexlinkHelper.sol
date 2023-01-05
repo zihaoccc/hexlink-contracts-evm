@@ -6,7 +6,7 @@ pragma solidity ^0.8.8;
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "./IHexlink.sol";
+import "../hexlink/IHexlink.sol";
 import "../auth/AuthProof.sol";
 
 contract HexlinkHelper {

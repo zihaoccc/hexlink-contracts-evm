@@ -15,6 +15,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const wrapped = netConf["gasStation"]
     ? netConf["gasStation"]["wrapped"]
     : ethers.constants.AddressZero;
+
   console.log("Using swap router: " + swapRouter);
   console.log("Using wrapped eth: " + wrapped);
   await deploy("GasStation", {

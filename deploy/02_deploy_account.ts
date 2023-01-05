@@ -31,16 +31,16 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
       log: true,
       autoMine: true,
     });
-  }
 
-  // deploy beacon proxy contract
-  const beacon = await hre.deployments.get("AccountBeacon");
-  await deploy("AccountProxy", {
-    from: deployer,
-    args: [beacon.address],
-    log: true,
-    autoMine: true,
-  });
+    // deploy beacon proxy contract
+    const beacon = await hre.deployments.get("AccountBeacon");
+    await deploy("AccountProxy", {
+      from: deployer,
+      args: [beacon.address],
+      log: true,
+      autoMine: true,
+    });
+  }
 };
 
 export default func;

@@ -44,9 +44,15 @@ const processTx = async function(tx: any) {
 task("hexlink_check", "check hexlink metadata")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const hexlink = await getHexlink(hre);
+        const beacon = await hre.ethers.getContractAt(
+            "AccountBeacon",
+            (await hre.deployments.get("AccountBeacon")).address
+        );
         const result = {
             "address": hexlink.address,
             "accountBase": await hexlink.accountBase(),
+            "accountBeacon": await beacon.address,
+            "accountImpl": await beacon.implementation(),
             "oracleRegistry": await hexlink.oracleRegistry(),
             "authConfig": {
                 twoStageLock: (await hexlink.twoStageLock()).toNumber(),

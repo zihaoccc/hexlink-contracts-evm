@@ -1,6 +1,5 @@
 import { ethers, deployments, artifacts, run } from "hardhat";
 import { Contract, BigNumber } from "ethers";
-import { HexlinkToken__factory } from "../typechain";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -35,8 +34,6 @@ describe("Hexlink Account", function() {
         const gasStation = await deployments.get("GasStation");
         const hexlinkToken = await deployments.get("HexlinkToken");
     
-        const packetSalt = ethers.constants.HashZero;
-        const gasToken = ethers.constants.AddressZero;
         const gasPrice = await ethers.provider.getGasPrice();
         const gasAmount = BigNumber.from(1000000);
 
@@ -170,7 +167,6 @@ describe("Hexlink Account", function() {
             txData,
             authProof,
             options
-        );    
+        );
     });
 });
-  
