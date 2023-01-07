@@ -36,7 +36,14 @@ const config: HardhatUserConfig = {
   solidity: "0.8.8",
   networks: {
     goerli: {
-      url: process.env.VITE_HARDHAT_GOERLI_URL || "",
+      url: process.env.HARDHAT_GOERLI_URL || "",
+      accounts:
+        process.env.HARDHAT_DEPLOYER !== undefined ?
+          [process.env.HARDHAT_DEPLOYER] :
+          [],
+    },
+    mumbai: {
+      url: process.env.HARDHAT_MUMBAI_URL || "",
       accounts:
         process.env.HARDHAT_DEPLOYER !== undefined ?
           [process.env.HARDHAT_DEPLOYER] :

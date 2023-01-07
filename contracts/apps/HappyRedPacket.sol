@@ -104,7 +104,7 @@ contract HappyRedPacket {
     }
 
     function _claimd(
-        address claimer, 
+        address claimer,
         uint8 mode,
         RedPacket memory p
     ) internal view returns(uint256 claimed) {

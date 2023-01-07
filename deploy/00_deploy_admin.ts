@@ -4,8 +4,8 @@ import * as config from '../config.json';
 import { ethers } from "ethers";
 
 const getAdminConfig = async function(hre: HardhatRuntimeEnvironment) {
-    let netConf = config[hre.network.name as keyof typeof config];
-    if (netConf) {
+    let netConf = config[hre.network.name as keyof typeof config] || {};
+    if (netConf["safe"] !== undefined) {
         return {
             minDelay: Number(netConf["timelock"].minDelay),
             proposers: [ethers.utils.getAddress(netConf["safe"])],
