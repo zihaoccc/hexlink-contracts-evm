@@ -60,8 +60,8 @@ task("hexlink_check", "check hexlink metadata")
             },
             "owner": await hexlink.owner(),
             "implementation": await hexlink.implementation(),
-            "token": (await deployments.get("HexlinkToken")).address,
-            "helper": (await deployments.get("HexlinkHelper")).address,
+            "token": (await hre.deployments.get("HexlinkToken")).address,
+            "helper": (await hre.deployments.get("HexlinkHelper")).address,
         }
         console.log(result);
         return result;
