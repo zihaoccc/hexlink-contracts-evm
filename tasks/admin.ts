@@ -121,8 +121,11 @@ task("admin_check", "check if has role")
         const minDelay = await admin.getMinDelay();
         console.log("admin is " + admin.address + ", with min delay as " + minDelay);
 
-        const safe = ethers.utils.getAddress(netConf(hre)["safe"]);
-        console.log("Gnosis Safe is " + safe);
+        const { deployer } = await hre.ethers.getNamedSigners();
+        const safe = netConf(hre)["safe"]
+            ? ethers.utils.getAddress(netConf(hre)["safe"])
+            : deployer.address;
+        console.log("Owner of admin is " + safe);
 
         const isProposer = await admin.hasRole(
             ethers.utils.keccak256(ethers.utils.toUtf8Bytes("PROPOSER_ROLE")),

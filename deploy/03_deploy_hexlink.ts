@@ -17,9 +17,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   // deploy hexlink proxy
   try {
-    await deployments.get("HexlinkProxy");
+    const proxy = await deployments.get("HexlinkProxy");
+    console.log("Reusing HexlinkProxy at " + proxy.address);
     console.log("Hexlink proxy is already deployed, please upgrade instead of deploying a new one");
-    return;
   } catch {
     const hexlinkImpl = await deployments.get("HexlinkUpgradeable");
     const hexlinkDeployment = await deploy("HexlinkProxy", {
