@@ -10,7 +10,7 @@ import "./AuthProof.sol";
 
 struct PrevAuthProof {
     uint256 verifiedAt;
-    uint256 identityType;
+    bytes32 identityType;
 }
 
 struct RequestInfo {

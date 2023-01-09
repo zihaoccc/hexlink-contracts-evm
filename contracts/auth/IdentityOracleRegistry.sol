@@ -58,7 +58,7 @@ contract IdentityOracleRegistry is IIdentityOracleRegistry, Ownable {
         OracleSelector memory selector,
         address _oracle
     ) internal {
-        require(selector.identityType != 0 && _oracle != address(0), "HEXL002");
+        require(selector.identityType != bytes32(0) && _oracle != address(0), "HEXL002");
         require(_oracle.isContract(), "HEXL013");
         oracles_[_lookUpKey(selector)] = _oracle;
     }

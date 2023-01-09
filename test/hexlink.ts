@@ -1,11 +1,12 @@
 import {expect} from "chai";
 import {ethers, deployments, getNamedAccounts, artifacts, run} from "hardhat";
 
-const namehash = function(name: string) {
-  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
+function hash(value: string) {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(value));
 }
-const sender = namehash("mailto:sender@gmail.com");
-const receiver = namehash("mailto:receiver@gmail.com");
+
+const sender = hash("mailto:sender@gmail.com");
+const receiver = hash("mailto:receiver@gmail.com");
 
 const address0 = ethers.constants.AddressZero;
 
@@ -42,7 +43,6 @@ describe("Hexlink", function() {
     const { deployer } = await ethers.getNamedSigners();
     const name = sender;
     const accountAddr = await hexlink.addressOfName(name);
-  
     const authProof = await buildDeployAuthProof({name});
     await expect(
       hexlink.deploy(name, [], authProof)
@@ -110,13 +110,20 @@ describe("Hexlink", function() {
     ).to.be.revertedWith("IO003");
 
     // deploy with wrong identity type without oracle
-    invalidAuthProof = {...validAuthProof, identityType: 4};
+    invalidAuthProof = {
+      ...validAuthProof,
+      identityType: hash("twitter.com")
+    };
     await expect(
       hexlink.deploy(name, data, invalidAuthProof)
     ).to.be.revertedWith("HEXL017");
 
     // deploy with wrong identity type and auth type
-    invalidAuthProof = {...validAuthProof, identityType: 4, authType: 2};
+    invalidAuthProof = {
+      ...validAuthProof,
+      identityType: hash("twitter.com"),
+      authType: hash("oauth")
+    };
     await expect(
       hexlink.deploy(name, data, invalidAuthProof)
     ).to.be.revertedWith("IO003");
@@ -211,13 +218,20 @@ describe("Hexlink", function() {
     ).to.be.revertedWith("IO003");
 
     // reset with wrong identity type without oracle
-    invalidAuthProof = {...validAuthProof, identityType: 4};
+    invalidAuthProof = {
+      ...validAuthProof,
+      identityType: hash("twitter.com")
+    };
     await expect(
       hexlink.reset(receiver, deployer.address, invalidAuthProof)
     ).to.be.revertedWith("HEXL017");
 
     // reset with wrong identity/auth type
-    invalidAuthProof = {...validAuthProof, identityType: 4, authType: 2};
+    invalidAuthProof = {
+      ...validAuthProof,
+      identityType: hash("twitter.com"),
+      authType: hash("oauth")
+    };
     await expect(
       hexlink.reset(receiver, deployer.address, invalidAuthProof)
     ).to.be.revertedWith("IO003");

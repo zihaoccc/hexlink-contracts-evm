@@ -7,6 +7,10 @@ function netConf(hre: HardhatRuntimeEnvironment) {
     return config[hre.network.name as keyof typeof config] || {};
 }
 
+function hash(value: string) {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(value));
+}
+
 async function createOracle(
   name: string,
   hre: HardhatRuntimeEnvironment
@@ -82,8 +86,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     from: deployer,
     args: [
       admin.address, [
-          {identityType: 1, authType: 1}, // email otp 
-          {identityType: 4, authType: 2}, // twitter oauth
+          {identityType: hash("email"), authType: hash("otp")},
+          {identityType: hash("twitter.com"), authType: hash("oauth")},
       ], [emailOtp, twitterOAuth]],
     log: true,
     autoMine: true,

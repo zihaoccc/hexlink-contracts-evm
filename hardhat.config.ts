@@ -20,7 +20,7 @@ task("abi", "Prints abi of contract")
     .setAction(async (args, {artifacts}) => {
       const artifact = await artifacts.readArtifact(args.contract);
       if (args.print) {
-        console.log(JSON.stringify(artifact.abi));
+        console.log(JSON.stringify(artifact.abi, null, 2));
       }
       return artifact.abi;
     });

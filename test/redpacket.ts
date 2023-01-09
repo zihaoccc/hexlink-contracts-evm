@@ -154,8 +154,8 @@ describe("Hexlink Account", function() {
         );
         const authProof = await run("build_deploy_auth_proof", {
             name: sender,
-            identityType: "4", // twitter
-            authType: "2", // oauth
+            identityType: "twitter.com",
+            authType: "oauth",
             data: initData
         });
 

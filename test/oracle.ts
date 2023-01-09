@@ -1,10 +1,13 @@
 import {expect} from "chai";
 import {
-  run,
   ethers,
   deployments,
   getNamedAccounts,
 } from "hardhat";
+
+function hash(value: string) {
+  return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(value));
+}
 
 const getContract = async function(name: string) {
   const deployment = await deployments.get(name);
@@ -22,7 +25,10 @@ describe("IdentityOracle", function() {
 
     const emailOtp = await ethers.getContractAt(
         "SimpleIdentityOracle",
-        await registry.oracle({identityType: 1, authType: 1})
+        await registry.oracle({
+          identityType: hash("email"),
+          authType: hash("otp")
+        })
     );
     expect(
         await emailOtp.isRegistered(validator)
@@ -30,7 +36,10 @@ describe("IdentityOracle", function() {
 
     const twitterOAuth = await ethers.getContractAt(
         "SimpleIdentityOracle",
-        await registry.oracle({identityType: 4, authType: 2})
+        await registry.oracle({
+          identityType: hash("twitter.com"),
+          authType: hash("oauth")
+        })
     );
     expect(
         await twitterOAuth.isRegistered(validator)
@@ -42,7 +51,10 @@ describe("IdentityOracle", function() {
     const registry = await getContract("IdentityOracleRegistry");
     const oracle = await ethers.getContractAt(
         "IERC1271",
-        await registry.oracle({identityType: 1, authType: 1})
+        await registry.oracle({
+          identityType: hash("email"),
+          authType: hash("otp")
+        })
     );
 
     const message = ethers.utils.keccak256(
