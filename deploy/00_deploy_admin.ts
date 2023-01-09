@@ -14,7 +14,7 @@ const getAdminConfig = async function(hre: HardhatRuntimeEnvironment) {
     } else {
         const { deployer } = await hre.getNamedAccounts();
         return {
-            minDelay: 0,
+            minDelay: Number(netConf["timelock"]?.minDelay || 0),
             proposers: [deployer],
             executors: [deployer]
         }
