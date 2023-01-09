@@ -28,7 +28,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   try {
     const admin = await hre.deployments.get("HexlinkAdmin");
-    console.log("Reusing HexlinkAdmin at " + admin.address);
+    console.log("reusing HexlinkAdmin at " + admin.address);
   } catch(error) {
     const { minDelay, proposers, executors } = await getAdminConfig(hre);
     await deploy("HexlinkAdmin", {
