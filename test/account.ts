@@ -206,7 +206,7 @@ describe("Hexlink Account", function() {
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });
 
-  it("Should pay gas with gas station", async function() {
+  it("Should pay gas with gas refund", async function() {
     const accountDeployer = await getContract("TestAccountDeployer");
     const account = await deployAccount(sender, accountDeployer);
     const token = await getContract("HexlinkToken");
@@ -224,10 +224,6 @@ describe("Hexlink Account", function() {
     // token transfer with validateAndCall
     const receiverAddr = await accountDeployer.addressOfName(receiver);
     const estimatedGas = 200000;
-    const gasStation = await ethers.getContractAt(
-      "GasStation",
-      (await deployments.get("GasStation")).address
-    );
     const data = account.interface.encodeFunctionData(
         "execBatch",
         [
@@ -245,17 +241,8 @@ describe("Hexlink Account", function() {
               to: account.address,
               value: 0,
               callData: account.interface.encodeFunctionData(
-                "depositGasTo",
-                [gasStation.address, estimatedGas]
-              ),
-              callGasLimit: 0
-            },
-            {
-              to: gasStation.address,
-              value: 0,
-              callData: gasStation.interface.encodeFunctionData(
-                "pay",
-                [account.address, receiverAddr, estimatedGas]
+                "refundGas",
+                [receiverAddr, ethers.constants.AddressZero, estimatedGas, 0]
               ),
               callGasLimit: 0
             }
@@ -274,21 +261,11 @@ describe("Hexlink Account", function() {
 
     const tx = await account.connect(validator).validateAndCall(data, nonce, signature);
     const receipt = await tx.wait();
-    const events = receipt.logs.filter(
-      log => log.address == gasStation.address
-    ).map((log: any) => gasStation.interface.parseLog(log));
-    const event = events.find((e: any) => e.name == "Payment");
     const payment = receipt.effectiveGasPrice.mul(estimatedGas);
-    expect(event.args.from).to.eq(account.address);
-    expect(event.args.to).to.eq(receiverAddr);
-    expect(event.args.amount).to.eq(payment);
 
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
     ).to.eq(payment);
-    expect(
-      await ethers.provider.getBalance(account.address)
-    ).to.eq(balance.sub(payment));
   });
 });

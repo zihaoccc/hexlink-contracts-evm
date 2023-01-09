@@ -15,17 +15,14 @@ contract HexlinkHelper {
     event Deploy(bytes32 indexed name, address indexed impl, address account);
     IHexlink immutable hexlink;
     address immutable accountBase;
-    address immutable gasStation;
     address immutable redPacket;
 
     constructor(
         address _hexlink,
-        address _gasStation,
         address _redPacket
     ) {
         hexlink = IHexlink(_hexlink);
         accountBase = hexlink.accountBase();
-        gasStation = _gasStation;
         redPacket = _redPacket;
     }
 

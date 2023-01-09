@@ -28,9 +28,9 @@ contract HappyRedPacket {
         uint256 expiredAt; // 0 means never expire
         uint256 balance;
         address validator;
-        address gasStation;
         uint32 split;
         uint8 mode; // 0: not_set, 1: fixed, 2: randomized
+        bool enableGasSponsorship;
     }
 
     struct RedPacket {
@@ -93,13 +93,9 @@ contract HappyRedPacket {
         emit Claimed(packetId, claimer, claimed);
 
         // pay gas with gas station
-        if (pd.gasStation != address(0)) {
-            uint256 payment = gasUsed - gasleft() + 60000;
-            bytes memory data = abi.encodeWithSignature(
-                "pay(address,address,uint256)", creator, refundReceiver, payment
-            );
-            (bool success,) = pd.gasStation.call{gas: 60000}(data);
-            require(success, "Failed to refund gas");
+        if (pd.enableGasSponsorship) {
+            uint256 payment = (gasUsed - gasleft() + 60000) * tx.gasprice;
+            IERC20(pd.token).transferFrom(creator, refundReceiver, payment);
         }
     }
 
@@ -111,7 +107,7 @@ contract HappyRedPacket {
         require(p.balance > 0 && p.split > 0, "Empty Packet");
         if (p.split == 1) {
             claimed = p.balance;
-        } else if (mode == 1) { // fixed
+        } else if (mode == 1) { // equally shared
             claimed = p.balance / p.split;
         } else if (mode == 2) { // randomized
             uint randomHash = uint(keccak256(

@@ -31,7 +31,6 @@ describe("Hexlink Account", function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
         const redPacket = await deployments.get("HappyRedPacket");
-        const gasStation = await deployments.get("GasStation");
         const hexlinkToken = await deployments.get("HexlinkToken");
     
         const gasPrice = await ethers.provider.getGasPrice();
@@ -48,7 +47,7 @@ describe("Hexlink Account", function() {
             expiredAt: Math.floor( Date.now() / 1000 ) + 3600,
             split: 10,
             mode: 2,
-            gasStation: gasStation.address,
+            enableGasSponsorship: true,
         };
         const gasSponsorAmount = gasPrice.mul(150000).mul(packet.split);
 
@@ -57,18 +56,7 @@ describe("Hexlink Account", function() {
         await token.connect(deployer).transfer(tester.address, 100000);
         // approve packet token
         await token.connect(tester).approve(accountAddr, packet.balance);
-    
-        // build op to deposit eth to gas station
-        const gasStationIface = await iface("GasStation");
-        const op1 = {
-            to: gasStation.address,
-            value: gasAmount,
-            callData: gasStationIface.encodeFunctionData(
-                "deposit", []
-            ),
-            callGasLimit: 0 // no limit
-        };
-
+        
         // build op to transfer packet token from tester to account
         const op2 = {
             to: hexlinkToken.address,
@@ -89,6 +77,10 @@ describe("Hexlink Account", function() {
             callGasLimit: 0 // no limit
         };
 
+        // build op to despoit gas token
+
+        // build op to approve red packet for gas token
+
         // build op to create red packet
         const redPacketIface = await iface("HappyRedPacket");
         const op4 = {
@@ -96,16 +88,6 @@ describe("Hexlink Account", function() {
             value: 0,
             callData: redPacketIface.encodeFunctionData(
                 "create", [packet]
-            ),
-            callGasLimit: 0 // no limit
-        };
-
-        // build op to whitelist red packet for gas station
-        const op5 = {
-            to: gasStation.address,
-            value: 0,
-            callData: gasStationIface.encodeFunctionData(
-                "increaseAllowance", [redPacket.address, gasSponsorAmount]
             ),
             callGasLimit: 0 // no limit
         };
@@ -129,7 +111,7 @@ describe("Hexlink Account", function() {
         // build txData for execBatch
         const data = (await iface("AccountSimple")).encodeFunctionData(
             "execBatch",
-            [[op1, op2, op3, op4, op5, op6]]
+            [[op2, op3, op4, op6]]
         );
 
         // build txData for validateAndCall

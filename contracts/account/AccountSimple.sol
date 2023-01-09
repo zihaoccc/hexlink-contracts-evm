@@ -20,19 +20,6 @@ contract AccountSimple is AccountBase {
         return nonce_;
     }
 
-    function depositGasTo(
-        address gasStation,
-        uint256 amount
-    ) external returns(uint256) {
-        _validateCaller();
-        uint256 payment = amount * tx.gasprice;
-        gasStation.functionCallWithValue(
-            abi.encodeWithSignature("deposit()"),
-            payment
-        );
-        return payment;
-    }
-
     function refundGas(
         address payable receiver,
         address token,
