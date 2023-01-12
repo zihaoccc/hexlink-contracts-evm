@@ -49,16 +49,15 @@ describe("Hexlink Account", function() {
             mode: 2,
             enableGasSponsorship: true,
         };
-        const gasSponsorAmount = gasPrice.mul(150000).mul(packet.split);
-
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
         await token.connect(deployer).transfer(tester.address, 100000);
         // approve packet token
         await token.connect(tester).approve(accountAddr, packet.balance);
+        await token.connect(deployer).transfer(accountAddr, 1000000);
         
         // build op to transfer packet token from tester to account
-        const op2 = {
+        const op1 = {
             to: hexlinkToken.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
@@ -68,7 +67,7 @@ describe("Hexlink Account", function() {
         };
 
         // build op to approve red packet for packet token
-        const op3 = {
+        const op2 = {
             to: hexlinkToken.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
@@ -77,13 +76,9 @@ describe("Hexlink Account", function() {
             callGasLimit: 0 // no limit
         };
 
-        // build op to despoit gas token
-
-        // build op to approve red packet for gas token
-
         // build op to create red packet
         const redPacketIface = await iface("HappyRedPacket");
-        const op4 = {
+        const op3 = {
             to: redPacket.address,
             value: 0,
             callData: redPacketIface.encodeFunctionData(
@@ -92,26 +87,10 @@ describe("Hexlink Account", function() {
             callGasLimit: 0 // no limit
         };
 
-        // build op to refund gas for tx sender
-        const accountIface = await iface("AccountSimple");
-        const op6 = {
-            to: accountAddr,
-            value: 0,
-            callData: accountIface.encodeFunctionData(
-                "refundGas", [
-                    validator.address,
-                    ethers.constants.AddressZero,
-                    gasAmount,
-                    0,
-                ]
-            ),
-            callGasLimit: 0 // no limit
-        };
-
         // build txData for execBatch
         const data = (await iface("AccountSimple")).encodeFunctionData(
             "execBatch",
-            [[op2, op3, op4, op6]]
+            [[op1, op2, op3]]
         );
 
         // build txData for validateAndCall
@@ -131,6 +110,7 @@ describe("Hexlink Account", function() {
         );
 
         // build op to init account
+        const accountIface = await iface("AccountSimple");
         const initData = accountIface.encodeFunctionData(
             "init", [tester.address]
         );
@@ -141,14 +121,15 @@ describe("Hexlink Account", function() {
             data: initData
         });
 
-        const options = { value: gasSponsorAmount.add(gasAmount) };
         const hexlinkHelper = await getContract("HexlinkHelper");
-        await hexlinkHelper.connect(tester).deployAndCreateRedPacket(
+        const tx = await hexlinkHelper.connect(tester).deployAndCreateRedPacket(
             sender,
             initData,
             txData,
-            authProof,
-            options
+            authProof
         );
+        const receipt = await tx.wait();
+        const gasCost = receipt.gasUsed;
+        console.log("real gas cost = "  + gasCost.toNumber());
     });
 });

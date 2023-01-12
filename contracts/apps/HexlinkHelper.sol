@@ -56,7 +56,9 @@ contract HexlinkHelper {
         AuthProof calldata proof
     ) external payable {
         address account = hexlink.deploy(name, initData, proof);
-        Address.sendValue(payable(account), msg.value);
+        if (msg.value > 0) {
+            Address.sendValue(payable(account), msg.value);
+        }
         account.functionCall(txData);
     }
 }

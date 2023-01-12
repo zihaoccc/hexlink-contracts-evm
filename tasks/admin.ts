@@ -215,7 +215,7 @@ task("admin_schedule_and_exec", "schedule and execute")
         const admin = await getAdminContract(hre);
         await hre.run("admin_schedule", args);
         function wait(ms: number) {
-            return new Promise( resolve => setTimeout(resolve, ms) );
+            return new Promise( resolve => setTimeout(resolve, ms * 1000) );
         }
         const delay = Number(args.dealy) || (await admin.getMinDelay()).toNumber();
         console.log("Will wait for " + delay + " seconds before exec");
@@ -245,7 +245,7 @@ task("admin_schedule_or_exec", "schedule and execute")
             await hre.run("admin_exec", args);
         } else if (await admin.isOperationPending(operationId)) {
             console.log("Operation is pending, please try later.");
-            console.log(await admin.getTimestamp(operationId));
+            console.log("Timestamp is " + (await admin.getTimestamp(operationId).toNumber()));
         } else if (await admin.isOperationDone(operationId)) {
             console.log("Operation is Done.");
         }else {

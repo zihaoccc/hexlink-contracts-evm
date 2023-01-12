@@ -206,7 +206,7 @@ describe("Hexlink Account", function() {
     expect(await erc1155.balanceOf(senderAddr, 1)).to.eq(10);
   });
 
-  it("Should pay gas with gas refund", async function() {
+  it("Should pay gas with gas refund with eth", async function() {
     const accountDeployer = await getContract("TestAccountDeployer");
     const account = await deployAccount(sender, accountDeployer);
     const token = await getContract("HexlinkToken");
@@ -223,7 +223,6 @@ describe("Hexlink Account", function() {
 
     // token transfer with validateAndCall
     const receiverAddr = await accountDeployer.addressOfName(receiver);
-    const estimatedGas = 200000;
     const data = account.interface.encodeFunctionData(
         "execBatch",
         [
@@ -234,15 +233,6 @@ describe("Hexlink Account", function() {
               callData: token.interface.encodeFunctionData(
                 "transfer",
                 [tester.address, 100]
-              ),
-              callGasLimit: 0
-            },
-            {
-              to: account.address,
-              value: 0,
-              callData: account.interface.encodeFunctionData(
-                "refundGas",
-                [receiverAddr, ethers.constants.AddressZero, estimatedGas, 0]
               ),
               callGasLimit: 0
             }
@@ -259,13 +249,78 @@ describe("Hexlink Account", function() {
       ethers.utils.arrayify(requestId)
     );
 
-    const tx = await account.connect(validator).validateAndCall(data, nonce, signature);
+    const tx = await account.connect(
+      validator
+    ).validateAndCallWithGasRefund(data, nonce, signature, {
+      token: ethers.constants.AddressZero,
+      price: 0,
+      base: 80000, // 76852
+      receiver: receiverAddr
+    });
     const receipt = await tx.wait();
-    const payment = receipt.effectiveGasPrice.mul(estimatedGas);
-
+    const gasCost = receipt.gasUsed;
+    const e = receipt.events.find((x: any) => x.event === "GasPaid");
+    console.log("real gas cost = " + gasCost.toNumber());
+    console.log("gas refund = " + e.args.amount.toNumber());
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
-    ).to.eq(payment);
+    ).to.eq(e.args.amount.mul(receipt.effectiveGasPrice));
+  });
+
+  it("Should pay gas with gas refund with hexlink token", async function() {
+    const accountDeployer = await getContract("TestAccountDeployer");
+    const account = await deployAccount(sender, accountDeployer);
+    const token = await getContract("HexlinkToken");
+    const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+    // send token to account
+    await token.connect(deployer).transfer(account.address, 500000);
+  
+    // token transfer with validateAndCall
+    const receiverAddr = await accountDeployer.addressOfName(receiver);
+    const data = account.interface.encodeFunctionData(
+        "execBatch",
+        [
+          [
+            {
+              to: token.address,
+              value: 0,
+              callData: token.interface.encodeFunctionData(
+                "transfer",
+                [tester.address, 100]
+              ),
+              callGasLimit: 0
+            }
+          ]
+        ]
+    );
+    const nonce = await account.nonce();
+    const requestId = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ["bytes", "uint256"],
+        [data, nonce]
+      ));
+    const signature = await deployer.signMessage(
+      ethers.utils.arrayify(requestId)
+    );
+
+    const tx = await account.connect(
+      validator
+    ).validateAndCallWithGasRefund(data, nonce, signature, {
+      token: token.address,
+      price: 1,
+      base: 70000,  // 69597 expected
+      receiver: receiverAddr
+    });
+    const receipt = await tx.wait();
+    const gasCost = receipt.gasUsed;
+    const e = receipt.events.find((x: any) => x.event === "GasPaid");
+    console.log("real gas cost = "  + gasCost.toNumber());
+    console.log("gas refund = " + e.args.amount.toNumber());
+    // check eth balance
+    expect(
+      await token.balanceOf(receiverAddr)
+    ).to.eq(e.args.amount);
   });
 });

@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.8;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "./AccountBase.sol";
+import "../utils/GasPayer.sol";
 
-contract AccountSimple is AccountBase {
-    using Address for address;
-
+contract AccountSimple is AccountBase, GasPayer {
     uint256 private nonce_;
 
     function init(address owner) external {
@@ -20,38 +17,27 @@ contract AccountSimple is AccountBase {
         return nonce_;
     }
 
-    function refundGas(
-        address payable receiver,
-        address token,
-        uint256 amount,
-        uint256 price
-    ) external returns (uint256 payment) {
-        _validateCaller();
-        if (token == address(0)) {
-            // price cannot be higher than tx.gasprice
-            if (price == 0) {
-                price = tx.gasprice;
-            } else {
-                price = price < tx.gasprice ? price : tx.gasprice;
-            }
-            payment = amount * tx.gasprice;
-            Address.sendValue(receiver, payment);
-        } else {
-            payment = amount * price;
-            IERC20(token).transfer(receiver, payment);
-        }
-    }
-
     function validateAndCall(
         bytes calldata txData,
         uint256 _nonce,
         bytes calldata signature
-    ) external {
+    ) public {
         bytes32 requestId = keccak256(abi.encode(txData, nonce_));
         require(nonce_++ == _nonce, "HEXLA008");
         _validateSignature(requestId, signature);
         (bool success,) = address(this).call(txData);
         require(success, "HEXLA009");
+    }
+
+    function validateAndCallWithGasRefund(
+        bytes calldata txData,
+        uint256 _nonce,
+        bytes calldata signature,
+        GasPayment calldata gas
+    ) external {
+        uint256 gasUsed = gasleft();
+        validateAndCall(txData, _nonce, signature);
+        _refundGas(gas, gasUsed - gasleft());
     }
 
     function _validateCaller() internal view override {
