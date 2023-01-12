@@ -245,7 +245,7 @@ task("admin_schedule_or_exec", "schedule and execute")
             await hre.run("admin_exec", args);
         } else if (await admin.isOperationPending(operationId)) {
             console.log("Operation is pending, please try later.");
-            console.log("Timestamp is " + (await admin.getTimestamp(operationId).toNumber()));
+            console.log("Timestamp is " + (await admin.getTimestamp(operationId)).toNumber());
         } else if (await admin.isOperationDone(operationId)) {
             console.log("Operation is Done.");
         }else {

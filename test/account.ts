@@ -35,7 +35,7 @@ const deployAccount = async function(
   const artifact = await deployments.getArtifact("AccountSimple");
   const iface = new ethers.utils.Interface(artifact.abi);
   const data = iface.encodeFunctionData(
-    "init", [deployer.address]
+    "init", [deployer.address, []]
   );
   const accountAddr = await accountDeployer.addressOfName(name);
   await expect(

@@ -14,19 +14,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     log: true,
     autoMine: true
   });
-
-  // deploy hexlink helper
-  const hexlink = await deployments.get("HexlinkProxy");
-  const redPacket = await deployments.get("HappyRedPacket");
-  await deploy("HexlinkHelper", {
-    from: deployer,
-    args: [
-      hexlink.address,
-      redPacket.address
-    ],
-    log: true,
-    autoMine: true,
-  });
 };
 
 export default func;

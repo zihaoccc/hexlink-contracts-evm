@@ -54,7 +54,7 @@ describe("Hexlink", function() {
     const account = await ethers.getContractAt("AccountSimple", accountAddr);
     expect(await account.owner()).to.eq(address0);
 
-    await account.init(deployer.address);
+    await account.init(deployer.address, []);
     expect(await account.owner()).to.eq(deployer.address);
   });
 
@@ -69,7 +69,7 @@ describe("Hexlink", function() {
     const artifact = await artifacts.readArtifact("AccountSimple");
     const iface = new ethers.utils.Interface(artifact.abi);
     const data = iface.encodeFunctionData(
-        "init", [deployer.address]
+        "init", [deployer.address, []]
     );
   
     // deploy with wrong validator

@@ -32,10 +32,6 @@ describe("Hexlink Account", function() {
 
         const redPacket = await deployments.get("HappyRedPacket");
         const hexlinkToken = await deployments.get("HexlinkToken");
-    
-        const gasPrice = await ethers.provider.getGasPrice();
-        const gasAmount = BigNumber.from(1000000);
-
         const hexlink = await getHexlink();
         const accountAddr = await hexlink.addressOfName(sender);
 
@@ -51,11 +47,9 @@ describe("Hexlink Account", function() {
         };
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
-        await token.connect(deployer).transfer(tester.address, 100000);
-        // approve packet token
+        await token.connect(deployer).transfer(tester.address, 1000000);
         await token.connect(tester).approve(accountAddr, packet.balance);
-        await token.connect(deployer).transfer(accountAddr, 1000000);
-        
+
         // build op to transfer packet token from tester to account
         const op1 = {
             to: hexlinkToken.address,
@@ -88,32 +82,16 @@ describe("Hexlink Account", function() {
         };
 
         // build txData for execBatch
-        const data = (await iface("AccountSimple")).encodeFunctionData(
+        const accountIface = await iface("AccountSimple");
+        const opsData = accountIface.encodeFunctionData(
             "execBatch",
             [[op1, op2, op3]]
         );
-
-        // build txData for validateAndCall
-        const nonce = 0;
-        const requestId = ethers.utils.keccak256(
-            ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "uint256"],
-                [data, nonce]
-            )
-        );
-        const signature = await tester.signMessage(
-            ethers.utils.arrayify(requestId)
-        );
-        const txData = (await iface("AccountSimple")).encodeFunctionData(
-            "validateAndCall",
-            [data, nonce, signature]
-        );
+        const initData = accountIface.encodeFunctionData("init", [
+            tester.address, opsData
+        ]);
 
         // build op to init account
-        const accountIface = await iface("AccountSimple");
-        const initData = accountIface.encodeFunctionData(
-            "init", [tester.address]
-        );
         const authProof = await run("build_deploy_auth_proof", {
             name: sender,
             identityType: "twitter.com",
@@ -121,11 +99,9 @@ describe("Hexlink Account", function() {
             data: initData
         });
 
-        const hexlinkHelper = await getContract("HexlinkHelper");
-        const tx = await hexlinkHelper.connect(tester).deployAndCreateRedPacket(
+        const tx = await hexlink.connect(tester).deploy(
             sender,
             initData,
-            txData,
             authProof
         );
         const receipt = await tx.wait();

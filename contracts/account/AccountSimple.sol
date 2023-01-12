@@ -8,9 +8,11 @@ import "../utils/GasPayer.sol";
 contract AccountSimple is AccountBase, GasPayer {
     uint256 private nonce_;
 
-    function init(address owner) external {
+    function init(address owner, bytes memory data) external {
         require(_owner() == address(0) && owner != address(0), "HEXL015");
         _transferOwnership(owner);
+        (bool success, ) = address(this).call(data);
+        require(success, "HEXL013");
     }
 
     function nonce() external view returns(uint256) {
