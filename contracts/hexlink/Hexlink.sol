@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "./IHexlink.sol";
 import "../auth/HexlinkAuth.sol";
+import "hardhat/console.sol";
 
 contract Hexlink is IHexlink, HexlinkAuth, Ownable {
     struct AccountState {
@@ -57,11 +58,15 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
         bytes32 name,
         bytes calldata txData,
         AuthProof calldata proof
-    ) external override returns(address) {
+    ) external payable override returns(address) {
         RequestInfo memory info = _buildRequestInfo(name, txData);
         _validate(info, proof);
         address account = Clones.cloneDeterministic(accountBase, name);
-        account.functionCall(txData);
+        if (msg.value > 0) {
+            Address.sendValue(payable(account), msg.value);
+        }
+        (bool success2,) = account.call(txData);
+        require(success2, "HEXL022");
         states[name].nonce = info.nonce + 1;
         emit Deploy(name, account);
         return account;

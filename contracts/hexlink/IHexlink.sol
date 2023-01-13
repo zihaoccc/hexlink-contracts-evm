@@ -20,7 +20,7 @@ interface IHexlink {
         bytes32 name,
         bytes calldata txData,
         AuthProof calldata proof
-    ) external returns(address);
+    ) external payable returns(address);
 
     function reset(
         bytes32 name,

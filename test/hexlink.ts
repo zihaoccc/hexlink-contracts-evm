@@ -44,11 +44,16 @@ describe("Hexlink", function() {
     const name = sender;
     const accountAddr = await hexlink.addressOfName(name);
     const authProof = await buildDeployAuthProof({name});
+
+    const value = ethers.utils.parseEther("1.0");
     await expect(
-      hexlink.deploy(name, [], authProof)
+      hexlink.deploy(name, [], authProof, {value})
     ).to.emit(hexlink, "Deploy").withArgs(
       name, accountAddr
     );
+    expect(
+      await ethers.provider.getBalance(accountAddr)
+    ).to.eq(value);
     expect(await ethers.provider.getCode(accountAddr)).to.not.eq("0x");
 
     const account = await ethers.getContractAt("AccountSimple", accountAddr);

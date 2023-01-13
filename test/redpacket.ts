@@ -1,5 +1,6 @@
+import { expect } from "chai";
 import { ethers, deployments, artifacts, run } from "hardhat";
-import { Contract, BigNumber } from "ethers";
+import { Contract } from "ethers";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -88,7 +89,7 @@ describe("Hexlink Account", function() {
             [[op1, op2, op3]]
         );
         const initData = accountIface.encodeFunctionData("init", [
-            tester.address, opsData
+            tester.address, []
         ]);
 
         // build op to init account
@@ -99,13 +100,18 @@ describe("Hexlink Account", function() {
             data: initData
         });
 
+        const value = ethers.utils.parseEther("1.0");
         const tx = await hexlink.connect(tester).deploy(
             sender,
             initData,
-            authProof
+            authProof,
+            {value}
         );
         const receipt = await tx.wait();
         const gasCost = receipt.gasUsed;
         console.log("real gas cost = "  + gasCost.toNumber());
+        expect(
+            await ethers.provider.getBalance(accountAddr)
+        ).to.eq(value);
     });
 });
