@@ -25,7 +25,6 @@ contract HappyRedPacket {
     struct RedPacketData {
         address token;
         bytes32 salt;
-        uint256 expiredAt; // 0 means never expire
         uint256 balance;
         address validator;
         uint32 split;
@@ -33,6 +32,7 @@ contract HappyRedPacket {
     }
 
     struct RedPacket {
+        uint256 createdAt;
         uint256 balance;
         uint32 split;
     }
@@ -42,7 +42,8 @@ contract HappyRedPacket {
 
     function create(RedPacketData memory pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
-        bytes32 packetId = _packetId(msg.sender, pd);
+        bytes32 packetId = _packetId(msg.sender, pd.token, pd.salt);
+        require(packets_[packetId].createdAt == 0, "Packet already created");
         if (pd.token != address(0)) {
             IERC20(pd.token).transferFrom(msg.sender, address(this), pd.balance);
         } else {
@@ -50,6 +51,7 @@ contract HappyRedPacket {
         }
         packets_[packetId].balance += pd.balance;
         packets_[packetId].split += pd.split;
+        packets_[packetId].createdAt = block.timestamp;
         emit Created(packetId, msg.sender, pd);
     }
 
@@ -58,7 +60,9 @@ contract HappyRedPacket {
     }
 
     function refund(address token, bytes32 salt) external {
-        bytes32 packetId = keccak256(abi.encode(msg.sender, token, salt));
+        bytes32 packetId = _packetId(msg.sender, token, salt);
+        // packet locked for one day before withdraw
+        require(block.timestamp - packets_[packetId].createdAt > 86400, "Packet locked");
         _transfer(token, msg.sender, packets_[packetId].balance);
         packets_[packetId].balance = 0;
     }
@@ -70,8 +74,7 @@ contract HappyRedPacket {
         address refundReceiver,
         bytes calldata signature
     ) external {
-        require(pd.expiredAt == 0 || pd.expiredAt > block.timestamp, "Packet Expired");
-        bytes32 packetId = _packetId(creator, pd);
+        bytes32 packetId = _packetId(creator, pd.token, pd.salt);
 
         // validate claimer
         require(count_[packetId][claimer] == 0, "Already claimed");
@@ -123,8 +126,11 @@ contract HappyRedPacket {
 
     function _packetId(
         address creator,
-        RedPacketData memory pd
+        address token,
+        bytes32 salt
     ) internal view returns (bytes32) {
-        return keccak256(abi.encode(block.chainid, address(this), creator, pd));
+        return keccak256(
+          abi.encode(block.chainid, address(this), creator, token, salt)
+        );
     }
 }
