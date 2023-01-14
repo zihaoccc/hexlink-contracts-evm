@@ -30,7 +30,6 @@ contract HappyRedPacket {
         address validator;
         uint32 split;
         uint8 mode; // 0: not_set, 1: fixed, 2: randomized
-        bool enableGasSponsorship;
     }
 
     struct RedPacket {
@@ -43,7 +42,7 @@ contract HappyRedPacket {
 
     function create(RedPacketData memory pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
-        bytes32 packetId = keccak256(abi.encode(msg.sender, pd));
+        bytes32 packetId = _packetId(msg.sender, pd);
         if (pd.token != address(0)) {
             IERC20(pd.token).transferFrom(msg.sender, address(this), pd.balance);
         } else {
@@ -71,9 +70,8 @@ contract HappyRedPacket {
         address refundReceiver,
         bytes calldata signature
     ) external {
-        uint256 gasUsed = gasleft();
         require(pd.expiredAt == 0 || pd.expiredAt > block.timestamp, "Packet Expired");
-        bytes32 packetId = keccak256(abi.encode(creator, pd));
+        bytes32 packetId = _packetId(creator, pd);
 
         // validate claimer
         require(count_[packetId][claimer] == 0, "Already claimed");
@@ -91,12 +89,6 @@ contract HappyRedPacket {
         packets_[packetId].split = p.split - 1;
         _transfer(pd.token, claimer, claimed);
         emit Claimed(packetId, claimer, claimed);
-
-        // pay gas with gas station
-        if (pd.enableGasSponsorship) {
-            uint256 payment = (gasUsed - gasleft() + 60000) * tx.gasprice;
-            IERC20(pd.token).transferFrom(creator, refundReceiver, payment);
-        }
     }
 
     function _claimd(
@@ -127,5 +119,12 @@ contract HappyRedPacket {
         } else {
             IERC20(token).transfer(to, amount);
         }
+    }
+
+    function _packetId(
+        address creator,
+        RedPacketData memory pd
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encode(block.chainid, address(this), creator, pd));
     }
 }

@@ -43,8 +43,7 @@ describe("Hexlink Account", function() {
             validator: validator.address,
             expiredAt: Math.floor( Date.now() / 1000 ) + 3600,
             split: 10,
-            mode: 2,
-            enableGasSponsorship: true,
+            mode: 2
         };
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);

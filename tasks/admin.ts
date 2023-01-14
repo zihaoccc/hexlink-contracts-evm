@@ -282,19 +282,25 @@ task("register_oracle", "register oracle contract for identity and auth type")
 task("register_validator", "register validator at oracle contract")
     .addParam("oracle")
     .addParam("validator")
+    .addFlag("registered")
     .addFlag("wait")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const oracle = await hre.ethers.getContractAt("SimpleIdentityOracle", args.oracle);
         const data = oracle.interface.encodeFunctionData(
             "register",
-            [ethers.utils.getAddress(args.validator), true]
+            [ethers.utils.getAddress(args.validator), args.registered]
         )
+        const registered = await oracle.isRegistered(args.validator);
+        if (registered) {
+            console.log("Already registered, skipping ");
+            return;
+        }
         console.log("Registering valdiator " + args.validator + " at oracle " + args.oracle);
         if (args.wait) {
             await hre.run("admin_schedule_and_exec", { target: oracle.address, data });
         } else {
             await hre.run("admin_schedule_or_exec", { target: oracle.address, data });
-        } 
+        }
     });
 
 task("set_oracle_registry", "set oracle registry")
