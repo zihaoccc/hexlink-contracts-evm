@@ -29,7 +29,7 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
         return IERC1271.isValidSignature.selector;
     }
 
-    function execBatch(BasicUserOp[] calldata ops) external override {
+    function execBatch(BasicUserOp[] calldata ops) external payable override {
         _validateCaller();
         uint256 opsLen = ops.length;
         for (uint256 i = 0; i < opsLen; i++) {
@@ -37,7 +37,7 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
         }
     }
 
-    function exec(BasicUserOp calldata op) external override {
+    function exec(BasicUserOp calldata op) external payable override {
         _validateCaller();
         _exec(op);
     }

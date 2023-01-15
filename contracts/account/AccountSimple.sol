@@ -23,7 +23,7 @@ contract AccountSimple is AccountBase, GasPayer {
         bytes calldata txData,
         uint256 _nonce,
         bytes calldata signature
-    ) public {
+    ) public payable {
         bytes32 requestId = keccak256(abi.encode(txData, nonce_));
         require(nonce_++ == _nonce, "HEXLA008");
         _validateSignature(requestId, signature);
@@ -36,7 +36,7 @@ contract AccountSimple is AccountBase, GasPayer {
         uint256 _nonce,
         bytes calldata signature,
         GasPayment calldata gas
-    ) external {
+    ) external payable {
         uint256 gasUsed = gasleft();
         validateAndCall(txData, _nonce, signature);
         _refundGas(gas, gasUsed - gasleft());

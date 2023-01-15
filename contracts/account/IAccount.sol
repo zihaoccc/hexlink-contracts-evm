@@ -11,7 +11,7 @@ struct BasicUserOp {
 }
 
 interface IAccount {
-    function execBatch(BasicUserOp[] calldata ops) external;
+    function execBatch(BasicUserOp[] calldata ops) external payable;
 
-    function exec(BasicUserOp calldata op) external;
+    function exec(BasicUserOp calldata op) external payable;
 }

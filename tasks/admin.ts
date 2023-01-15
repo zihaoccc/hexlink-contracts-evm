@@ -326,21 +326,23 @@ task("set_oracle_registry", "set oracle registry")
 task("upgrade_hexlink", "upgrade hexlink contract")
     .addFlag("wait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        await hre.run("deploy", {tags: "CORE"});
         const impl = await hre.deployments.get("HexlinkUpgradeable");
         const proxy = await hre.deployments.get("HexlinkProxy");
         const hexlink = await hre.ethers.getContractAt(
             "HexlinkUpgradeable", proxy.address
-        );
-        // upgrade hexlink proxy
-        const data = hexlink.interface.encodeFunctionData(
-            "upgradeTo",
-            [impl.address]
         );
         const existing = await hexlink.implementation();
         if (existing.toLowerCase() == impl.address.toLowerCase) {
             console.log("No need to upgrade");
             return;
         }
+
+        // upgrade hexlink proxy
+        const data = hexlink.interface.encodeFunctionData(
+            "upgradeTo",
+            [impl.address]
+        );
         console.log("Upgrading from " + existing + " to " + impl.address);
         if (args.wait) {
             await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
@@ -356,16 +358,19 @@ task("upgrade_account", "upgrade account implementation")
         const beacon = await hre.ethers.getContractAt(
             "AccountBeacon", deployment.address
         );
+
+        await hre.run("deploy", {tags: "ACCOUNT"});
         const accountImpl = await hre.deployments.get("AccountSimple");
-        const data = beacon.interface.encodeFunctionData(
-            "upgradeTo",
-            [accountImpl.address]
-        );
         const existing = await beacon.implementation();
         if (existing.toLowerCase() == accountImpl.address.toLowerCase) {
             console.log("No need to upgrade");
             return;
         }
+
+        const data = beacon.interface.encodeFunctionData(
+            "upgradeTo",
+            [accountImpl.address]
+        );
         console.log("Upgrading from " + existing + " to " + accountImpl.address);
         if (args.wait) {
             await hre.run("admin_schedule_and_exec", { target: beacon.address, data });

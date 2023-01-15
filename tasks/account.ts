@@ -33,7 +33,7 @@ task("send", "send ETH or token")
       const sender = await hre.run("account", {name: args.sender, hexlink: args.hexlink});
       const receiver = await hre.run("account", {name: args.receiver, hexlink: args.hexlink});
       const account = await hre.ethers.getContractAt("IAccount", sender);
-  
+
       let op : UserOp;
       if (args.token) {
         op = {
