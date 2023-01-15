@@ -30,8 +30,5 @@
     "solidity-coverage": "^0.7.21",
     "ts-node": "^10.9.1",
     "typechain": "^5.2.0"
-  },
-  "dependencies": {
-    "@uniswap/v3-periphery": "^1.4.3"
   }
 }

@@ -378,3 +378,32 @@ task("upgrade_account", "upgrade account implementation")
             await hre.run("admin_schedule_or_exec", { target: beacon.address, data });
         }
     });
+
+
+task("upgrade_redpacket", "upgrade redpacket implementation")
+    .addFlag("wait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const impl = await hre.deployments.get("HappyRedPacket");
+        const proxy = await hre.deployments.get("HappyRedPacketProxy");
+        const redpacket = await hre.ethers.getContractAt(
+            "HappyRedPacket", proxy.address
+        );
+
+        await hre.run("deploy", {tags: "APP"});
+        const existing = await redpacket.implementation();
+        if (existing.toLowerCase() == impl.address.toLowerCase) {
+            console.log("No need to upgrade");
+            return;
+        }
+
+        const data = redpacket.interface.encodeFunctionData(
+            "upgradeTo",
+            [impl.address]
+        );
+        console.log("Upgrading from " + existing + " to " + impl.address);
+        if (args.wait) {
+            await hre.run("admin_schedule_and_exec", { target: proxy.address, data });
+        } else {
+            await hre.run("admin_schedule_or_exec", { target: proxy.address, data });
+        }
+    });

@@ -23,6 +23,11 @@ async function getHexlink() : Promise<Contract> {
     return await ethers.getContractAt("Hexlink", deployment.address);
 }
 
+async function getRedPacket() : Promise<Contract> {
+    const deployment = await deployments.get("HappyRedPacketProxy");
+    return await ethers.getContractAt("HappyRedPacket", deployment.address);
+}
+
 describe("Hexlink Account", function() {
     beforeEach(async function() {
       await deployments.fixture(["HEXL"]);
@@ -31,9 +36,9 @@ describe("Hexlink Account", function() {
     it("erc20 as packet token and eth as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
-        const redPacket = await deployments.get("HappyRedPacket");
         const hexlinkToken = await deployments.get("HexlinkToken");
         const hexlink = await getHexlink();
+        const redPacket = await getRedPacket();
         const accountAddr = await hexlink.addressOfName(sender);
 
         const packet = {

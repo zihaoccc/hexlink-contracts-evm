@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract HappyRedPacket {
+contract HappyRedPacket is Ownable, UUPSUpgradeable {
     using ECDSA for bytes32;
     using Address for address;
 
@@ -39,6 +40,12 @@ contract HappyRedPacket {
     // user => PacketId => Packet as Packet
     mapping(bytes32 => RedPacket) internal packets_;
     mapping(bytes32 => mapping(address => uint256)) internal count_;
+
+    function initOwner(address newOwner) external {
+        require(owner() == address(0), "Owner already set");
+        require(newOwner != address(0), "Owner cannot be address zero");
+        _transferOwnership(newOwner);
+    }
 
     function create(RedPacketData memory pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
@@ -133,4 +140,12 @@ contract HappyRedPacket {
           abi.encode(block.chainid, address(this), creator, token, salt)
         );
     }
+
+    function implementation() external view returns (address) {
+        return _getImplementation();
+    }
+
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal view onlyOwner override { }
 }
