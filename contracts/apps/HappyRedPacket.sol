@@ -78,19 +78,17 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         address creator,
         RedPacketData memory pd,
         address claimer,
-        address refundReceiver,
         bytes calldata signature
     ) external {
         bytes32 packetId = _packetId(creator, pd.token, pd.salt);
-
-        // validate claimer
         require(count_[packetId][claimer] == 0, "Already claimed");
-        bytes32 message = keccak256(
-            abi.encode(packetId, claimer, refundReceiver)
-        );
-        bytes32 reqHash = message.toEthSignedMessageHash();
-        require(pd.validator == reqHash.recover(signature), "Invalid signature");
         count_[packetId][claimer] += 1;
+
+        if (msg.sender != pd.validator) {
+            bytes32 message = keccak256(abi.encode(packetId, claimer));
+            bytes32 reqHash = message.toEthSignedMessageHash();
+            require(pd.validator == reqHash.recover(signature), "Invalid signature");
+        }
 
         // claim red Packet
         RedPacket memory p = packets_[packetId];

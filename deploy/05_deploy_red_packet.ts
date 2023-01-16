@@ -18,8 +18,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   // deploy hexlink proxy
   try {
     const proxy = await deployments.get("HappyRedPacketProxy");
-    console.log("reusing HexlinkProxy at " + proxy.address);
-    console.log("Hexlink proxy is already deployed, please upgrade instead of deploying a new one");
+    console.log("reusing HappyRedPacketProxy at " + proxy.address);
+    console.log("HappyRedPacketProxy proxy is already deployed, please upgrade instead of deploying a new one");
   } catch {
     const impl = await deployments.get("HappyRedPacket");
     const admin = await hre.deployments.get("HexlinkAdmin");

@@ -383,13 +383,13 @@ task("upgrade_account", "upgrade account implementation")
 task("upgrade_redpacket", "upgrade redpacket implementation")
     .addFlag("wait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const impl = await hre.deployments.get("HappyRedPacket");
         const proxy = await hre.deployments.get("HappyRedPacketProxy");
         const redpacket = await hre.ethers.getContractAt(
             "HappyRedPacket", proxy.address
         );
 
         await hre.run("deploy", {tags: "APP"});
+        const impl = await hre.deployments.get("HappyRedPacket");
         const existing = await redpacket.implementation();
         if (existing.toLowerCase() == impl.address.toLowerCase) {
             console.log("No need to upgrade");
