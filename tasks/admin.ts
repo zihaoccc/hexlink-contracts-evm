@@ -258,7 +258,7 @@ task("register_oracle", "register oracle contract for identity and auth type")
     .addParam("identity")
     .addParam("auth")
     .addParam("oracle")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("IdentityOracleRegistry");
         const registry = await hre.ethers.getContractAt(
@@ -273,9 +273,9 @@ task("register_oracle", "register oracle contract for identity and auth type")
             }, ethers.utils.getAddress(args.oracle)]
         )
         if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: registry.address, data });
-        } else {
             await hre.run("admin_schedule_or_exec", { target: registry.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: registry.address, data });
         }
     });
 
@@ -283,7 +283,7 @@ task("register_validator", "register validator at oracle contract")
     .addParam("oracle")
     .addParam("validator")
     .addFlag("registered")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args: any, hre : HardhatRuntimeEnvironment) => {
         const oracle = await hre.ethers.getContractAt("SimpleIdentityOracle", args.oracle);
         const data = oracle.interface.encodeFunctionData(
@@ -296,15 +296,15 @@ task("register_validator", "register validator at oracle contract")
             return;
         }
         console.log("Registering valdiator " + args.validator + " at oracle " + args.oracle);
-        if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: oracle.address, data });
-        } else {
+        if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: oracle.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: oracle.address, data });
         }
     });
 
 task("set_oracle_registry", "set oracle registry")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("HexlinkProxy");
         const hexlink = await hre.ethers.getContractAt(
@@ -316,15 +316,15 @@ task("set_oracle_registry", "set oracle registry")
             "setOracleRegistry",
             [registry.address]
         );
-        if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
-        } else {
+        if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: hexlink.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
         }
     });
 
 task("upgrade_hexlink", "upgrade hexlink contract")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         await hre.run("deploy", {tags: "CORE"});
         const impl = await hre.deployments.get("HexlinkUpgradeable");
@@ -344,15 +344,15 @@ task("upgrade_hexlink", "upgrade hexlink contract")
             [impl.address]
         );
         console.log("Upgrading from " + existing + " to " + impl.address);
-        if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
-        } else {
+        if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: hexlink.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: hexlink.address, data });
         }
     });
 
 task("upgrade_account", "upgrade account implementation")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("AccountBeacon");
         const beacon = await hre.ethers.getContractAt(
@@ -372,16 +372,16 @@ task("upgrade_account", "upgrade account implementation")
             [accountImpl.address]
         );
         console.log("Upgrading from " + existing + " to " + accountImpl.address);
-        if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: beacon.address, data });
-        } else {
+        if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: beacon.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: beacon.address, data });
         }
     });
 
 
 task("upgrade_redpacket", "upgrade redpacket implementation")
-    .addFlag("wait")
+    .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const proxy = await hre.deployments.get("HappyRedPacketProxy");
         const redpacket = await hre.ethers.getContractAt(
@@ -401,9 +401,9 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
             [impl.address]
         );
         console.log("Upgrading from " + existing + " to " + impl.address);
-        if (args.wait) {
-            await hre.run("admin_schedule_and_exec", { target: proxy.address, data });
-        } else {
+        if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: proxy.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: proxy.address, data });
         }
     });

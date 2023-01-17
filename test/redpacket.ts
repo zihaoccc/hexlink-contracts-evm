@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run, network } from "hardhat";
 import { Contract } from "ethers";
+import { AbiCoder } from "ethers/lib/utils";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -13,11 +14,6 @@ async function iface(contract: string) {
     return new ethers.utils.Interface(artifact.abi);
 }
 
-async function getContract(name: string) : Promise<Contract> {
-    const deployment = await deployments.get(name);
-    return await ethers.getContractAt(name, deployment.address);
-}
-
 async function getHexlink() : Promise<Contract> {
     const deployment = await deployments.get("HexlinkProxy");
     return await ethers.getContractAt("Hexlink", deployment.address);
@@ -26,6 +22,28 @@ async function getHexlink() : Promise<Contract> {
 async function getRedPacket() : Promise<Contract> {
     const deployment = await deployments.get("HappyRedPacketProxy");
     return await ethers.getContractAt("HappyRedPacket", deployment.address);
+}
+
+function genRedPacketId(contract: string, creator: string, packet: any) : string {
+    const redPacketType = "tuple(address,bytes32,uint256,address,uint32,uint8)";
+    return ethers.utils.keccak256(
+        ethers.utils.defaultAbiCoder.encode(
+            ["uint256", "address", "address", redPacketType],
+            [
+                network.config.chainId,
+                contract,
+                creator,
+                [
+                    packet.token,
+                    packet.salt,
+                    packet.balance,
+                    packet.validator,
+                    packet.split,
+                    packet.mode
+                ]
+            ]
+        )
+    );
 }
 
 describe("Hexlink Redpacket", function() {
@@ -118,7 +136,21 @@ describe("Hexlink Redpacket", function() {
             await ethers.provider.getBalance(accountAddr)
         ).to.eq(value);
 
-        const info = await redPacket.getPacket(accountAddr, packet);
-        console.log(info);
+        const id = genRedPacketId(redPacket.address, accountAddr, packet)
+        const info = await redPacket.getPacket(id);
+        const hash = ethers.utils.keccak256(    
+            ethers.utils.defaultAbiCoder.encode(
+                ["bytes32", "address"],
+                [id, tester.address]
+            )
+        );
+        const signature = validator.signMessage(
+            ethers.utils.arrayify(hash)
+        );
+        const tx2 = await redPacket.connect(deployer).claim(
+            accountAddr, packet, tester.address, signature
+        );
+        const receipt2 = await tx2.wait();
+        console.log(receipt2.events);
     });
 });
