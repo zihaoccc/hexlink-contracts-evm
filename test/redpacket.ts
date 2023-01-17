@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { ethers, deployments, artifacts, run } from "hardhat";
+import { ethers, deployments, artifacts, run, network } from "hardhat";
 import { Contract } from "ethers";
 
 const namehash = function(name: string) : string {
@@ -28,7 +28,7 @@ async function getRedPacket() : Promise<Contract> {
     return await ethers.getContractAt("HappyRedPacket", deployment.address);
 }
 
-describe("Hexlink Account", function() {
+describe("Hexlink Redpacket", function() {
     beforeEach(async function() {
       await deployments.fixture(["HEXL"]);
     });
@@ -46,7 +46,6 @@ describe("Hexlink Account", function() {
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
-            expiredAt: Math.floor( Date.now() / 1000 ) + 3600,
             split: 10,
             mode: 2
         };
@@ -93,7 +92,7 @@ describe("Hexlink Account", function() {
             [[op1, op2, op3]]
         );
         const initData = accountIface.encodeFunctionData("init", [
-            tester.address, []
+            tester.address, opsData
         ]);
 
         // build op to init account
@@ -114,8 +113,12 @@ describe("Hexlink Account", function() {
         const receipt = await tx.wait();
         const gasCost = receipt.gasUsed;
         console.log("real gas cost = "  + gasCost.toNumber());
+
         expect(
             await ethers.provider.getBalance(accountAddr)
         ).to.eq(value);
+
+        const info = await redPacket.getPacket(accountAddr, packet);
+        console.log(info);
     });
 });

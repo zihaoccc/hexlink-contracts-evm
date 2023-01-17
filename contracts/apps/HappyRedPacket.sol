@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "hardhat/console.sol";
 
 contract HappyRedPacket is Ownable, UUPSUpgradeable {
     using ECDSA for bytes32;
@@ -50,6 +51,7 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
     function create(RedPacketData calldata pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
         bytes32 packetId = _packetId(msg.sender, pd);
+        console.logBytes32(packetId);
         require(packets_[packetId].createdAt == 0, "Packet already created");
         if (pd.token != address(0)) {
             IERC20(pd.token).transferFrom(msg.sender, address(this), pd.balance);
@@ -62,8 +64,9 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         emit Created(packetId, msg.sender, pd);
     }
 
-    function getPacket(bytes32 id) external view returns(RedPacket memory) {
-        return packets_[id];
+    function getPacket(address creator, RedPacketData calldata pd) external view returns(RedPacket memory) {
+        bytes32 packetId = _packetId(creator, pd);
+        return packets_[packetId];
     }
 
     function refund(RedPacketData calldata pd) external {
@@ -151,9 +154,7 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         address creator,
         RedPacketData calldata pd
     ) internal view returns (bytes32) {
-        return keccak256(
-          abi.encode(block.chainid, address(this), creator, pd)
-        );
+        return keccak256(abi.encode(block.chainid, address(this), creator, pd));
     }
 
     function implementation() external view returns (address) {
