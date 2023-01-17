@@ -47,9 +47,9 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         _transferOwnership(newOwner);
     }
 
-    function create(RedPacketData memory pd) external payable {
+    function create(RedPacketData calldata pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
-        bytes32 packetId = _packetId(msg.sender, pd.token, pd.salt);
+        bytes32 packetId = _packetId(msg.sender, pd);
         require(packets_[packetId].createdAt == 0, "Packet already created");
         if (pd.token != address(0)) {
             IERC20(pd.token).transferFrom(msg.sender, address(this), pd.balance);
@@ -66,37 +66,55 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         return packets_[id];
     }
 
-    function refund(address token, bytes32 salt) external {
-        bytes32 packetId = _packetId(msg.sender, token, salt);
+    function refund(RedPacketData calldata pd) external {
+        bytes32 packetId = _packetId(msg.sender, pd);
         // packet locked for one day before withdraw
         require(block.timestamp - packets_[packetId].createdAt > 86400, "Packet locked");
-        _transfer(token, msg.sender, packets_[packetId].balance);
+        _transfer(pd.token, msg.sender, packets_[packetId].balance);
         packets_[packetId].balance = 0;
+    }
+
+    function claimWithoutSignature(
+        address creator,
+        RedPacketData calldata pd,
+        address claimer
+    ) external {
+        require(msg.sender == pd.validator, "Unauthorized operator");
+        bytes32 packetId = _packetId(creator, pd);
+        _validateClaimer(packetId, claimer);
+        _claim(packetId, pd, claimer);
     }
 
     function claim(
         address creator,
-        RedPacketData memory pd,
+        RedPacketData calldata pd,
         address claimer,
         bytes calldata signature
     ) external {
-        bytes32 packetId = _packetId(creator, pd.token, pd.salt);
-        require(count_[packetId][claimer] == 0, "Already claimed");
-        count_[packetId][claimer] += 1;
+        bytes32 packetId = _packetId(creator, pd);
+        _validateClaimer(packetId, claimer);
+        bytes32 message = keccak256(abi.encode(packetId, claimer));
+        bytes32 reqHash = message.toEthSignedMessageHash();
+        require(pd.validator == reqHash.recover(signature), "Invalid signature");
+        _claim(packetId, pd, claimer);
+    }
 
-        if (msg.sender != pd.validator) {
-            bytes32 message = keccak256(abi.encode(packetId, claimer));
-            bytes32 reqHash = message.toEthSignedMessageHash();
-            require(pd.validator == reqHash.recover(signature), "Invalid signature");
-        }
-
-        // claim red Packet
+    function _claim(
+        bytes32 packetId,
+        RedPacketData calldata pd,
+        address claimer
+    ) internal {
         RedPacket memory p = packets_[packetId];
         uint256 claimed = _claimd(claimer, pd.mode, p);
         packets_[packetId].balance = p.balance - claimed;
         packets_[packetId].split = p.split - 1;
         _transfer(pd.token, claimer, claimed);
         emit Claimed(packetId, claimer, claimed);
+    }
+
+    function _validateClaimer(bytes32 packetId, address claimer) internal {
+        require(count_[packetId][claimer] == 0, "Already claimed");
+        count_[packetId][claimer] += 1;
     }
 
     function _claimd(
@@ -131,11 +149,10 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
 
     function _packetId(
         address creator,
-        address token,
-        bytes32 salt
+        RedPacketData calldata pd
     ) internal view returns (bytes32) {
         return keccak256(
-          abi.encode(block.chainid, address(this), creator, token, salt)
+          abi.encode(block.chainid, address(this), creator, pd)
         );
     }
 
