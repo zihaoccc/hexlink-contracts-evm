@@ -138,7 +138,7 @@ describe("Hexlink Redpacket", function() {
 
         const id = genRedPacketId(redPacket.address, accountAddr, packet)
         const info = await redPacket.getPacket(id);
-        const hash = ethers.utils.keccak256(    
+        const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
                 ["bytes32", "address"],
                 [id, tester.address]
@@ -147,9 +147,12 @@ describe("Hexlink Redpacket", function() {
         const signature = validator.signMessage(
             ethers.utils.arrayify(hash)
         );
-        const tx2 = await redPacket.connect(deployer).claim(
-            accountAddr, packet, tester.address, signature
-        );
+        const tx2 = await redPacket.connect(deployer).claim({
+            creator: accountAddr,
+            packet,
+            claimer: tester.address,
+            signature
+        });
         const receipt2 = await tx2.wait();
         console.log(receipt2.events);
     });

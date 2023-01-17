@@ -23,6 +23,13 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         uint amount
     );
 
+    struct RedPacketClaim {
+        address creator;
+        RedPacketData packet;
+        address claimer;
+        bytes signature;
+    }
+
     struct RedPacketData {
         address token;
         bytes32 salt;
@@ -74,29 +81,22 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         packets_[packetId].balance = 0;
     }
 
-    function claimWithoutSignature(
-        address creator,
-        RedPacketData calldata pd,
-        address claimer
-    ) external {
-        require(msg.sender == pd.validator, "Unauthorized operator");
-        bytes32 packetId = _packetId(creator, pd);
-        _validateClaimer(packetId, claimer);
-        _claim(packetId, pd, claimer);
+    function claim(RedPacketClaim calldata c) public {
+        bytes32 packetId = _packetId(c.creator, c.packet);
+        if (c.signature.length == 0) {
+            require(msg.sender == c.packet.validator, "Unauthorized");
+        } else {
+            bytes32 message = keccak256(abi.encode(packetId, c.claimer));
+            bytes32 reqHash = message.toEthSignedMessageHash();
+            require(c.packet.validator == reqHash.recover(c.signature), "Invalid signature");
+        }
+        _claim(packetId, c.packet, c.claimer);
     }
 
-    function claim(
-        address creator,
-        RedPacketData calldata pd,
-        address claimer,
-        bytes calldata signature
-    ) external {
-        bytes32 packetId = _packetId(creator, pd);
-        _validateClaimer(packetId, claimer);
-        bytes32 message = keccak256(abi.encode(packetId, claimer));
-        bytes32 reqHash = message.toEthSignedMessageHash();
-        require(pd.validator == reqHash.recover(signature), "Invalid signature");
-        _claim(packetId, pd, claimer);
+    function batchClaim(RedPacketClaim[] calldata claims) external {
+        for (uint256 i = 0; i < claims.length; i++) {
+            claim(claims[i]);
+        }
     }
 
     function _claim(
@@ -104,6 +104,7 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         RedPacketData calldata pd,
         address claimer
     ) internal {
+        _validateClaimer(packetId, claimer);
         RedPacket memory p = packets_[packetId];
         uint256 claimed = _claimd(claimer, pd.mode, p);
         packets_[packetId].balance = p.balance - claimed;
