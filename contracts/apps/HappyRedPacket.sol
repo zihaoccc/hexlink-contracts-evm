@@ -14,12 +14,12 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
 
     event Created(
         bytes32 indexed PacketId,
-        address creator,
+        address indexed creator,
         RedPacketData packet
     );
     event Claimed(
         bytes32 indexed PacketId,
-        address claimer,
+        address indexed claimer,
         uint amount
     );
 
