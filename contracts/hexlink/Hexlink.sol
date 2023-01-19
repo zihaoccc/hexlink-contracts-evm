@@ -65,8 +65,7 @@ contract Hexlink is IHexlink, HexlinkAuth, Ownable {
         if (msg.value > 0) {
             Address.sendValue(payable(account), msg.value);
         }
-        (bool success2,) = account.call(txData);
-        require(success2, "HEXL022");
+        account.functionCall(txData, "HEXL022");
         states[name].nonce = info.nonce + 1;
         emit Deploy(name, account);
         return account;

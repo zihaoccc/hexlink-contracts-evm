@@ -2,17 +2,19 @@
 
 pragma solidity ^0.8.8;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./AccountBase.sol";
 import "../utils/GasPayer.sol";
 
 contract AccountSimple is AccountBase, GasPayer {
+    using Address for address;
+
     uint256 private nonce_;
 
     function init(address owner, bytes memory data) external {
         require(_owner() == address(0) && owner != address(0), "HEXL015");
         _transferOwnership(owner);
-        (bool success, ) = address(this).call(data);
-        require(success, "HEXL013");
+        address(this).functionCall(data, "HEXL013");
     }
 
     function nonce() external view returns(uint256) {
