@@ -127,12 +127,17 @@ describe("Hexlink Redpacket", function() {
         );
 
         const value = ethers.utils.parseEther("1.0");
-        const tx = await hexlink.connect(tester).process(
-            [accountAddr, hexlink.address],
-            [value, 0],
-            [[], data],
-            {value}
-        );
+        const tx = await hexlink.connect(tester).process([{
+            to: accountAddr,
+            value,
+            callData: [],
+            callGasLimit: 0
+        }, {
+            to: hexlink.address,
+            value: 0,
+            callData: data,
+            callGasLimit: 0
+        }], {value});
         const receipt = await tx.wait();
         const gasCost = receipt.gasUsed;
         console.log("real gas cost = "  + gasCost.toNumber());

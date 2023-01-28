@@ -3,15 +3,10 @@
 
 pragma solidity ^0.8.8;
 
-struct BasicUserOp {
-    address to;
-    uint256 value;
-    bytes callData;
-    uint256 callGasLimit;
-}
+import "../utils/Op.sol";
 
 interface IAccount {
-    function execBatch(BasicUserOp[] calldata ops) external payable;
+    function execBatch(Op[] calldata ops) external payable;
 
-    function exec(BasicUserOp calldata op) external payable;
+    function exec(Op calldata op) external payable;
 }
