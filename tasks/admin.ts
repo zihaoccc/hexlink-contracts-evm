@@ -215,7 +215,7 @@ task("admin_schedule_and_exec", "schedule and execute")
         const admin = await getAdminContract(hre);
         await hre.run("admin_schedule", args);
         function wait(ms: number) {
-            return new Promise( resolve => setTimeout(resolve, ms * 1000) );
+            return new Promise( resolve => setTimeout(resolve, ms * 1000 + 2000) );
         }
         const delay = Number(args.dealy) || (await admin.getMinDelay()).toNumber();
         console.log("Will wait for " + delay + " seconds before exec");
@@ -328,10 +328,7 @@ task("upgrade_hexlink", "upgrade hexlink contract")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         await hre.run("deploy", {tags: "CORE"});
         const impl = await hre.deployments.get("HexlinkUpgradeable");
-        const proxy = await hre.run("hexlink", {});
-        const hexlink = await hre.ethers.getContractAt(
-            "HexlinkUpgradeable", proxy.address
-        );
+        const hexlink = await hre.run("hexlink", {});
         const existing = await hexlink.implementation();
         if (existing.toLowerCase() == impl.address.toLowerCase) {
             console.log("No need to upgrade");
@@ -386,7 +383,7 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
         const redpacket = await hre.run("redpacket", {});
 
         await hre.run("deploy", {tags: "APP"});
-        const impl = await hre.deployments.get("HappyRedPacket");
+        const impl = await hre.deployments.get("HappyRedPacketImpl");
         const existing = await redpacket.implementation();
         if (existing.toLowerCase() == impl.address.toLowerCase) {
             console.log("No need to upgrade");

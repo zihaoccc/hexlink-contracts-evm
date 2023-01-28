@@ -22,5 +22,5 @@ const getRedPacket = async function(
 
 task("redpacket", "get contract address of redpacket")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        return (await getRedPacket(hre)).address;
+        return await getRedPacket(hre);
     });

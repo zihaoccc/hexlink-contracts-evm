@@ -51,7 +51,7 @@ const processTx = async function(tx: any) {
 
 task("hexlink", "get hexlink contract address")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
-        return (await getHexlink(hre)).address;
+        return await getHexlink(hre);
     });
 
 task("hexlink_check", "check hexlink metadata")

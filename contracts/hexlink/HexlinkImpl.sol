@@ -11,7 +11,7 @@ import "./IHexlink.sol";
 import "../auth/HexlinkAuth.sol";
 import "./HexlinkUtils.sol";
 
-contract HexlinkImpl is IHexlink, Ownable, HexlinkAuth, HexlinkUtils {
+abstract contract HexlinkImpl is IHexlink, Ownable, HexlinkAuth, HexlinkUtils {
     struct AccountState {
         address account;
         uint96 nonce;
