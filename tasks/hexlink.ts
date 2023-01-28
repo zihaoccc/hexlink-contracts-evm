@@ -2,6 +2,11 @@ import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers, Contract } from "ethers";
 
+const HEXLINK : {[key: string]: string} = {
+    "goerli": "0xbad6a7948a1d3031ee7236d0180b6271fa569148",
+    "mumbai": "0x78317ef8b020Fe10e845ab8723403cF1e58Ef1Cc",
+}
+
 const genNameHash = function(name: string) : string {
     return ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(name)
@@ -11,10 +16,11 @@ const genNameHash = function(name: string) : string {
 const getHexlink = async function(
     hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
-    const deployment = await hre.deployments.get("HexlinkProxy");
+    const deployment = await hre.deployments.get("Hexlink");
+    const address = HEXLINK[hre.network.name] || deployment.address;
     return await hre.ethers.getContractAt(
         "HexlinkUpgradeable",
-        ethers.utils.getAddress(deployment.address)
+        ethers.utils.getAddress(address)
     );
 }
 
@@ -40,6 +46,11 @@ const processTx = async function(tx: any) {
         `Processed transaction (tx: ${tx.hash}) with ${gas} gas`
     );
 }
+
+task("hexlink", "get hexlink contract address")
+    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
+        return (await getHexlink(hre)).address;
+    });
 
 task("hexlink_check", "check hexlink metadata")
     .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {

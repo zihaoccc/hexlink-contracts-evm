@@ -18,9 +18,9 @@ const genNonce = async function(hexlink: Contract, args: {
 const getHexlink = async function(
     hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
-    const deployment = await hre.deployments.get("HexlinkProxy");
+    const deployment = await hre.deployments.get("Hexlink");
     return await hre.ethers.getContractAt(
-        "Hexlink",
+        "HexlinkUpgradeable",
         ethers.utils.getAddress(deployment.address)
     );
 }

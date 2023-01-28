@@ -328,7 +328,7 @@ task("upgrade_hexlink", "upgrade hexlink contract")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         await hre.run("deploy", {tags: "CORE"});
         const impl = await hre.deployments.get("HexlinkUpgradeable");
-        const proxy = await hre.deployments.get("HexlinkProxy");
+        const proxy = await hre.run("hexlink", {});
         const hexlink = await hre.ethers.getContractAt(
             "HexlinkUpgradeable", proxy.address
         );
@@ -383,9 +383,9 @@ task("upgrade_account", "upgrade account implementation")
 task("upgrade_redpacket", "upgrade redpacket implementation")
     .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const proxy = await hre.deployments.get("HappyRedPacketProxy");
+        const proxy = await hre.run("redpacket", {});
         const redpacket = await hre.ethers.getContractAt(
-            "HappyRedPacket", proxy.address
+            "HappyRedPacketImpl", proxy.address
         );
 
         await hre.run("deploy", {tags: "APP"});

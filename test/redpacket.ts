@@ -15,13 +15,13 @@ async function iface(contract: string) {
 }
 
 async function getHexlink() : Promise<Contract> {
-    const deployment = await deployments.get("HexlinkProxy");
-    return await ethers.getContractAt("Hexlink", deployment.address);
+    const deployment = await deployments.get("Hexlink");
+    return await ethers.getContractAt("HexlinkUpgradeable", deployment.address);
 }
 
 async function getRedPacket() : Promise<Contract> {
-    const deployment = await deployments.get("HappyRedPacketProxy");
-    return await ethers.getContractAt("HappyRedPacket", deployment.address);
+    const deployment = await deployments.get("HappyRedPacket");
+    return await ethers.getContractAt("HappyRedPacketImpl", deployment.address);
 }
 
 function genRedPacketId(contract: string, creator: string, packet: any) : string {
@@ -93,7 +93,7 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build op to create red packet
-        const redPacketIface = await iface("HappyRedPacket");
+        const redPacketIface = await iface("HappyRedPacketImpl");
         const op3 = {
             to: redPacket.address,
             value: 0,
@@ -121,11 +121,16 @@ describe("Hexlink Redpacket", function() {
             data: initData
         });
 
+        const data = hexlink.interface.encodeFunctionData(
+            "deploy",
+            [sender, initData, authProof],
+        );
+
         const value = ethers.utils.parseEther("1.0");
-        const tx = await hexlink.connect(tester).deploy(
-            sender,
-            initData,
-            authProof,
+        const tx = await hexlink.connect(tester).process(
+            [accountAddr, hexlink.address],
+            [value, 0],
+            [[], data],
             {value}
         );
         const receipt = await tx.wait();
@@ -153,7 +158,6 @@ describe("Hexlink Redpacket", function() {
             claimer: tester.address,
             signature
         });
-        const receipt2 = await tx2.wait();
-        console.log(receipt2.events);
+        await tx2.wait();
     });
 });

@@ -8,29 +8,28 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  await deploy("HappyRedPacket", {
+  await deploy("HappyRedPacketImpl", {
     from: deployer,
     args: [],
     log: true,
     autoMine: true
   });
 
-  // deploy hexlink proxy
   try {
-    const proxy = await deployments.get("HappyRedPacketProxy");
-    console.log("reusing HappyRedPacketProxy at " + proxy.address);
-    console.log("HappyRedPacketProxy proxy is already deployed, please upgrade instead of deploying a new one");
+    const proxy = await deployments.get("HappyRedPacket");
+    console.log("reusing HappyRedPacket at " + proxy.address);
+    console.log("HappyRedPacket proxy is already deployed, please upgrade instead of deploying a new one");
   } catch {
-    const impl = await deployments.get("HappyRedPacket");
+    const impl = await deployments.get("HappyRedPacketImpl");
     const admin = await hre.deployments.get("HexlinkAdmin");
     const implContract = await hre.ethers.getContractAt(
-      "HappyRedPacket",
+      "HappyRedPacketImpl",
       impl.address
     );
     const initData = implContract.interface.encodeFunctionData(
       "initOwner", [admin.address]
     );
-    await deploy("HappyRedPacketProxy", {
+    await deploy("HappyRedPacket", {
       from: deployer,
       args: [impl.address, initData],
       log: true,

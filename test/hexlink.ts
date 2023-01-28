@@ -11,8 +11,8 @@ const receiver = hash("mailto:receiver@gmail.com");
 const address0 = ethers.constants.AddressZero;
 
 const getHexlink = async function() {
-  const deployment = await deployments.get("HexlinkProxy");
-  return await ethers.getContractAt("Hexlink", deployment.address);
+  const deployment = await deployments.get("Hexlink");
+  return await ethers.getContractAt("HexlinkUpgradeable", deployment.address);
 };
 
 const buildDeployAuthProof = async function(params: {
@@ -45,15 +45,11 @@ describe("Hexlink", function() {
     const accountAddr = await hexlink.addressOfName(name);
     const authProof = await buildDeployAuthProof({name});
 
-    const value = ethers.utils.parseEther("1.0");
     await expect(
-      hexlink.deploy(name, [], authProof, {value})
+      hexlink.deploy(name, [], authProof)
     ).to.emit(hexlink, "Deploy").withArgs(
       name, accountAddr
     );
-    expect(
-      await ethers.provider.getBalance(accountAddr)
-    ).to.eq(value);
     expect(await ethers.provider.getCode(accountAddr)).to.not.eq("0x");
 
     const account = await ethers.getContractAt("AccountSimple", accountAddr);
@@ -279,7 +275,7 @@ describe("Hexlink", function() {
   });
 
   it("Should upgrade", async function() {
-    const hexlinkProxy = await deployments.get("HexlinkProxy");
+    const hexlinkProxy = await deployments.get("Hexlink");
     const hexlinkV1 = await ethers.getContractAt(
       "HexlinkUpgradeable",
       hexlinkProxy.address

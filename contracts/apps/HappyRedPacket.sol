@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 
-contract HappyRedPacket is Ownable, UUPSUpgradeable {
+contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
     using ECDSA for bytes32;
     using Address for address;
 
@@ -93,12 +93,6 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
         _claim(packetId, c.packet, c.claimer);
     }
 
-    function batchClaim(RedPacketClaim[] calldata claims) external {
-        for (uint256 i = 0; i < claims.length; i++) {
-            claim(claims[i]);
-        }
-    }
-
     function _claim(
         bytes32 packetId,
         RedPacketData calldata pd,
@@ -162,4 +156,13 @@ contract HappyRedPacket is Ownable, UUPSUpgradeable {
     function _authorizeUpgrade(
         address newImplementation
     ) internal view onlyOwner override { }
+}
+
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
+contract HappyRedPacket is ERC1967Proxy {
+    constructor(
+        address logic,
+        bytes memory data
+    ) ERC1967Proxy(logic, data) payable {}
 }
