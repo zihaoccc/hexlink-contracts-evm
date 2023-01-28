@@ -10,10 +10,12 @@ const REDPACKET : {[key: string]: string} = {
 const getRedPacket = async function(
     hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
-    const deployment = await hre.deployments.get("Hexlink");
-    const address = REDPACKET[hre.network.name] || deployment.address;
+    let address = REDPACKET[hre.network.name];
+    if (!address) {
+        address = (await hre.deployments.get("HappyRedPacket")).address;
+    }
     return await hre.ethers.getContractAt(
-        "HappyRedPacket",
+        "HappyRedPacketImpl",
         ethers.utils.getAddress(address)
     );
 }

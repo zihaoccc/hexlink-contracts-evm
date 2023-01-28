@@ -1,7 +1,5 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import {DeployFunction} from "hardhat-deploy/types";
-import * as config from '../config.json';
-import { ethers } from "hardhat";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
@@ -16,10 +14,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   });
 
   try {
-    const proxy = await deployments.get("HappyRedPacket");
+    const proxy = await hre.run("redpacket", {});
     console.log("reusing HappyRedPacket at " + proxy.address);
     console.log("HappyRedPacket proxy is already deployed, please upgrade instead of deploying a new one");
   } catch {
+    console.log("HappyRedPacket is not deployed, will deploy...");
     const impl = await deployments.get("HappyRedPacketImpl");
     const admin = await hre.deployments.get("HexlinkAdmin");
     const implContract = await hre.ethers.getContractAt(

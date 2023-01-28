@@ -16,8 +16,10 @@ const genNameHash = function(name: string) : string {
 const getHexlink = async function(
     hre: HardhatRuntimeEnvironment
 ): Promise<Contract> {
-    const deployment = await hre.deployments.get("Hexlink");
-    const address = HEXLINK[hre.network.name] || deployment.address;
+    let address = HEXLINK[hre.network.name];
+    if (!address) {
+        address = (await hre.deployments.get("Hexlink")).address;
+    }
     return await hre.ethers.getContractAt(
         "HexlinkUpgradeable",
         ethers.utils.getAddress(address)

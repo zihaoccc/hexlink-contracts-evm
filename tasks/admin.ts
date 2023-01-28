@@ -383,10 +383,7 @@ task("upgrade_account", "upgrade account implementation")
 task("upgrade_redpacket", "upgrade redpacket implementation")
     .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
-        const proxy = await hre.run("redpacket", {});
-        const redpacket = await hre.ethers.getContractAt(
-            "HappyRedPacketImpl", proxy.address
-        );
+        const redpacket = await hre.run("redpacket", {});
 
         await hre.run("deploy", {tags: "APP"});
         const impl = await hre.deployments.get("HappyRedPacket");
@@ -402,8 +399,8 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
         );
         console.log("Upgrading from " + existing + " to " + impl.address);
         if (args.nowait) {
-            await hre.run("admin_schedule_or_exec", { target: proxy.address, data });
+            await hre.run("admin_schedule_or_exec", { target: redpacket.address, data });
         } else {
-            await hre.run("admin_schedule_and_exec", { target: proxy.address, data });
+            await hre.run("admin_schedule_and_exec", { target: redpacket.address, data });
         }
     });
