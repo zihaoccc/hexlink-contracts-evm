@@ -6,6 +6,7 @@ pragma solidity ^0.8.8;
 
 import "@solidstate/contracts/access/ownable/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./IAccount.sol";
@@ -13,6 +14,13 @@ import "./IAccount.sol";
 abstract contract AccountBase is IERC1271, IAccount, Ownable {
     using Address for address;
     using ECDSA for bytes32;
+
+    event Deposit(
+        bytes32 indexed ref,
+        address indexed receipt,
+        address token,
+        uint256 amount
+    );
 
     receive() external payable { }
 
@@ -27,6 +35,21 @@ abstract contract AccountBase is IERC1271, IAccount, Ownable {
     ) external override view returns(bytes4) {
         _validateSignature(message, signature);
         return IERC1271.isValidSignature.selector;
+    }
+
+    function deposit(
+        bytes32 ref,
+        address receipt,
+        address token,
+        uint256 amount
+    ) external {
+         _validateCaller();
+        if (token == address(0)) {
+            Address.sendValue(payable(receipt), amount);
+        } else {
+            IERC20(token).transfer(receipt, amount);
+        }
+        emit Deposit(ref, receipt, token, amount);
     }
 
     function execBatch(Op[] calldata ops) external payable override {

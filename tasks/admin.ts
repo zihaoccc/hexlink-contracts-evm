@@ -308,7 +308,7 @@ task("set_oracle_registry", "set oracle registry")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("HexlinkProxy");
         const hexlink = await hre.ethers.getContractAt(
-            "Hexlink",
+            "HexlinkUpgradeable",
             ethers.utils.getAddress(deployment.address)
         );
         const registry = await hre.deployments.get("IdentityOracleRegistry");

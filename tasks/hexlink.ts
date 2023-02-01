@@ -184,3 +184,37 @@ task("reset2Stage", "reset the account address with 2fac")
         );
         await processTx(tx);
     });
+
+const senders = [
+  "0x0114b47e901d803ba36fd4676f309ad53cd607a2",
+  "0x6014fbb0f616a8c04f3de654c6d7b37e7b40b0d7",
+  "0xab503575205f0d5d3463d500058f5ecce4172082",
+  "0xda31a3fed6d37ed8cfcff2bc49c52f04d06bc587",
+  "0xd3dcda0bda4981872adf19f33df37cf72b01b5a6",
+  "0x8e30a6db366be3d49f9b0b34134d287d77d2c033",
+  "0x356ce1a08222c18389aa8c259f002f218aedc660",
+  "0x82d8df019f6f70185887ef4bcd05e8a372661f73",
+  "0x13394d0d20a1aa92ec64db98d5ef4781389af964",
+  "0x6df8bc42ba9e438bf14375b07fd06a5bc37e8c35",
+];
+
+task("deposit", "deposit to senders")
+    .addOptionalParam("amount")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const { deployer } = await hre.ethers.getNamedSigners();
+        const amount = args.amount || "0.05";
+        const value = ethers.utils.parseEther(amount);
+        const total = value.mul(senders.length);
+        const ops = senders.map(sender => ({
+            to: sender,
+            value,
+            callData: [],
+            callGasLimit: 0
+        }));
+        const hexlink = await getHexlink(hre);
+        const tx = await hexlink.connect(deployer).process(
+          ops, {value: total}
+        );
+        await tx.wait();
+        console.log(tx.hash);
+    });

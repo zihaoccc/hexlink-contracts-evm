@@ -70,14 +70,26 @@ describe("Hexlink Redpacket", function() {
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
         await token.connect(deployer).transfer(tester.address, 1000000);
-        await token.connect(tester).approve(accountAddr, packet.balance);
+        await token.connect(tester).approve(accountAddr, packet.balance + 100);
 
         // build op to transfer packet token from tester to account
-        const op1 = {
+        const op0 = {
             to: hexlinkToken.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
-                "transferFrom", [tester.address, accountAddr, packet.balance]
+                "transferFrom", [tester.address, accountAddr, packet.balance + 100]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build op to deposit gas sponsorship
+        const accountIface = await iface("AccountSimple");
+        const id = genRedPacketId(redPacket.address, accountAddr, packet);
+        const op1 = {
+            to: accountAddr,
+            value: 0,
+            callData: accountIface.encodeFunctionData(
+                "deposit", [id, tester.address, hexlinkToken.address, 100]
             ),
             callGasLimit: 0 // no limit
         };
@@ -104,10 +116,9 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build txData for execBatch
-        const accountIface = await iface("AccountSimple");
         const opsData = accountIface.encodeFunctionData(
             "execBatch",
-            [[op1, op2, op3]]
+            [[op0, op1, op2, op3]]
         );
         const initData = accountIface.encodeFunctionData("init", [
             tester.address, opsData
@@ -146,8 +157,6 @@ describe("Hexlink Redpacket", function() {
             await ethers.provider.getBalance(accountAddr)
         ).to.eq(value);
 
-        const id = genRedPacketId(redPacket.address, accountAddr, packet)
-        const info = await redPacket.getPacket(id);
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
                 ["bytes32", "address"],
