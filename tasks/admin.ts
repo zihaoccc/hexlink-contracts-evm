@@ -330,7 +330,7 @@ task("upgrade_hexlink", "upgrade hexlink contract")
         const impl = await hre.deployments.get("HexlinkUpgradeable");
         const hexlink = await hre.run("hexlink", {});
         const existing = await hexlink.implementation();
-        if (existing.toLowerCase() == impl.address.toLowerCase) {
+        if (existing.toLowerCase() == impl.address.toLowerCase()) {
             console.log("No need to upgrade");
             return;
         }
@@ -359,7 +359,7 @@ task("upgrade_account", "upgrade account implementation")
         await hre.run("deploy", {tags: "ACCOUNT"});
         const accountImpl = await hre.deployments.get("AccountSimple");
         const existing = await beacon.implementation();
-        if (existing.toLowerCase() == accountImpl.address.toLowerCase) {
+        if (existing.toLowerCase() === accountImpl.address.toLowerCase()) {
             console.log("No need to upgrade");
             return;
         }
@@ -385,7 +385,7 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
         await hre.run("deploy", {tags: "APP"});
         const impl = await hre.deployments.get("HappyRedPacketImpl");
         const existing = await redpacket.implementation();
-        if (existing.toLowerCase() == impl.address.toLowerCase) {
+        if (existing.toLowerCase() == impl.address.toLowerCase()) {
             console.log("No need to upgrade");
             return;
         }
