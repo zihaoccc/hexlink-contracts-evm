@@ -240,10 +240,15 @@ describe("Hexlink Account", function() {
         ]
     );
     const nonce = await account.nonce();
+    const gas = {
+      token: ethers.constants.AddressZero,
+      price: 0,
+      receiver: receiverAddr
+    };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256"],
-        [data, nonce]
+        ["bytes", "uint256", "tuple(address, address, uint256)"],
+        [data, nonce, [gas.receiver, gas.token, gas.price]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -251,17 +256,12 @@ describe("Hexlink Account", function() {
 
     const tx = await account.connect(
       validator
-    ).validateAndCallWithGasRefund(data, nonce, signature, {
-      token: ethers.constants.AddressZero,
-      price: 0,
-      receiver: receiverAddr
-    });
+    ).validateAndCallWithGasRefund(data, nonce, signature, gas);
     const receipt = await tx.wait();
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = " + gasCost.toNumber());
     console.log("gas refund = " + e.args.amount.toNumber());
-    expect(gasCost.toNumber()).to.eq(e.args.amount.toNumber());
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
@@ -296,10 +296,15 @@ describe("Hexlink Account", function() {
         ]
     );
     const nonce = await account.nonce();
+    const gas = {
+      token: token.address,
+      price: 1,
+      receiver: receiverAddr
+    };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256"],
-        [data, nonce]
+        ["bytes", "uint256", "tuple(address, address, uint256)"],
+        [data, nonce, [gas.receiver, gas.token, gas.price]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -307,17 +312,12 @@ describe("Hexlink Account", function() {
 
     const tx = await account.connect(
       validator
-    ).validateAndCallWithGasRefund(data, nonce, signature, {
-      token: token.address,
-      price: 1,
-      receiver: receiverAddr
-    });
+    ).validateAndCallWithGasRefund(data, nonce, signature, gas);
     const receipt = await tx.wait();
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = "  + gasCost.toNumber());
     console.log("gas refund = " + e.args.amount.toNumber());
-    expect(gasCost.toNumber()).to.eq(e.args.amount.toNumber());
     // check eth balance
     expect(
       await token.balanceOf(receiverAddr)

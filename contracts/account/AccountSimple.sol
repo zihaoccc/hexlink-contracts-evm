@@ -40,7 +40,11 @@ contract AccountSimple is AccountBase, GasPayer {
         GasPayment calldata gas
     ) external payable {
         uint256 gasUsed = gasleft();
-        validateAndCall(txData, _nonce, signature);
+        bytes32 requestId = keccak256(abi.encode(txData, nonce_, gas));
+        require(nonce_++ == _nonce, "HEXLA008");
+        _validateSignature(requestId, signature);
+        (bool success,) = address(this).call(txData);
+        require(success, "HEXLA009");
         _refundGas(gas, gasUsed - gasleft());
     }
 
