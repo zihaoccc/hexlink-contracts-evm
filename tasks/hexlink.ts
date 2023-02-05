@@ -202,7 +202,7 @@ task("deposit", "deposit to senders")
     .addOptionalParam("amount")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const { deployer } = await hre.ethers.getNamedSigners();
-        const amount = args.amount || "0.05";
+        const amount = args.amount || "0.1";
         const value = ethers.utils.parseEther(amount);
         const total = value.mul(senders.length);
         const ops = senders.map(sender => ({
@@ -217,4 +217,8 @@ task("deposit", "deposit to senders")
         );
         await tx.wait();
         console.log(tx.hash);
+        for (let i = 0; i < senders.length; i++) {
+            const balance = await hre.ethers.provider.getBalance(senders[i]);
+            console.log(balance.toString());
+        }
     });

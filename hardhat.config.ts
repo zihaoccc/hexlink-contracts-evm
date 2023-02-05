@@ -14,6 +14,7 @@ import "./tasks/nft";
 import "./tasks/hexlink";
 import "./tasks/auth";
 import "./tasks/app";
+import "./tasks/redpacket";
 
 task("abi", "Prints abi of contract")
     .addParam("contract", "contract name")
@@ -37,6 +38,7 @@ const config: HardhatUserConfig = {
   solidity: "0.8.8",
   networks: {
     goerli: {
+      chainId: 5,
       url: process.env.HARDHAT_GOERLI_URL || "",
       accounts:
         process.env.HARDHAT_DEPLOYER !== undefined ?
@@ -44,6 +46,7 @@ const config: HardhatUserConfig = {
           [],
     },
     mumbai: {
+      chainId: 80001,
       url: process.env.HARDHAT_MUMBAI_URL || "",
       accounts:
         process.env.HARDHAT_DEPLOYER !== undefined ?
@@ -52,7 +55,7 @@ const config: HardhatUserConfig = {
     },
   },
   gasReporter: {
-    enabled: false,
+    enabled: true,
     currency: "USD",
   },
   namedAccounts: {

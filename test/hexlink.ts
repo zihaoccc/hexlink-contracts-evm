@@ -129,7 +129,7 @@ describe("Hexlink", function() {
       hexlink.deploy(name, data, invalidAuthProof)
     ).to.be.revertedWith("IO003");
   
-    // deploy account contract
+    //deploy account contract
     await expect(
       hexlink.deploy(name, data, validAuthProof)
     ).to.emit(hexlink, "Deploy").withArgs(

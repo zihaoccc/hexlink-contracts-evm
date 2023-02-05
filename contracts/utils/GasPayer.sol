@@ -12,7 +12,6 @@ contract GasPayer {
     struct GasPayment {
         address payable receiver;
         address token;
-        uint256 base;
         uint256 price;
     }
 
@@ -20,19 +19,19 @@ contract GasPayer {
         GasPayment calldata gas,
         uint256 gasUsed
     ) internal returns (uint256 payment) {
-        if (gas.receiver != address(0)) {
-            gasUsed += gas.base;
-            if (gas.token == address(0)) {
-                uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
-                price = price > tx.gasprice ? tx.gasprice : price;
-                payment = gasUsed * price;
-                (bool success, ) = gas.receiver.call{value: payment}("");
-                require(success, "HEXL020");
-            } else {
-                payment = gasUsed * gas.price;
-                IERC20(gas.token).transfer(gas.receiver, payment);
-            }
-            emit GasPaid(gas.receiver, gasUsed);
+        require(gas.receiver != address(0), "HEXLA014");
+        if (gas.token == address(0)) {
+            gasUsed += 76620;
+            uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
+            price = price > tx.gasprice ? tx.gasprice : price;
+            payment = gasUsed * price;
+            (bool success, ) = gas.receiver.call{value: payment}("");
+            require(success, "HEXL020");
+        } else {
+            gasUsed += 69365;
+            payment = gasUsed * gas.price;
+            IERC20(gas.token).transfer(gas.receiver, payment);
         }
+        emit GasPaid(gas.receiver, gasUsed);
     }
 }

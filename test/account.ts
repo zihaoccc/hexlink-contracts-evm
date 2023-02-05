@@ -254,7 +254,6 @@ describe("Hexlink Account", function() {
     ).validateAndCallWithGasRefund(data, nonce, signature, {
       token: ethers.constants.AddressZero,
       price: 0,
-      base: 80000, // 76852
       receiver: receiverAddr
     });
     const receipt = await tx.wait();
@@ -262,6 +261,7 @@ describe("Hexlink Account", function() {
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = " + gasCost.toNumber());
     console.log("gas refund = " + e.args.amount.toNumber());
+    expect(gasCost.toNumber()).to.eq(e.args.amount.toNumber());
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
@@ -310,7 +310,6 @@ describe("Hexlink Account", function() {
     ).validateAndCallWithGasRefund(data, nonce, signature, {
       token: token.address,
       price: 1,
-      base: 70000,  // 69597 expected
       receiver: receiverAddr
     });
     const receipt = await tx.wait();
@@ -318,6 +317,7 @@ describe("Hexlink Account", function() {
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = "  + gasCost.toNumber());
     console.log("gas refund = " + e.args.amount.toNumber());
+    expect(gasCost.toNumber()).to.eq(e.args.amount.toNumber());
     // check eth balance
     expect(
       await token.balanceOf(receiverAddr)
