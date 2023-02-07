@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "hardhat/console.sol";
 
 contract GasPayer {
-    event GasPaid(address to, uint256 amount);
+    event GasPaid(address to, uint256 payment);
 
     struct GasPayment {
         address payable receiver;
@@ -22,15 +22,13 @@ contract GasPayer {
         require(gas.receiver != address(0), "HEXLA014");
         gasUsed += 80000; // From 69369 to 76624 
         if (gas.token == address(0)) {
-            uint256 price = gas.price == 0 ? tx.gasprice : gas.price;
-            price = price > tx.gasprice ? tx.gasprice : price;
-            payment = gasUsed * price;
+            payment = gasUsed * tx.gasprice;
             (bool success, ) = gas.receiver.call{value: payment}("");
             require(success, "HEXL020");
         } else {
-            payment = gasUsed * gas.price;
+            payment = gasUsed * tx.gasprice * gas.price / 1000000000;
             IERC20(gas.token).transfer(gas.receiver, payment);
         }
-        emit GasPaid(gas.receiver, gasUsed);
+        emit GasPaid(gas.receiver, payment);
     }
 }

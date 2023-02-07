@@ -51,7 +51,7 @@ describe("Hexlink Redpacket", function() {
       await deployments.fixture(["HEXL"]);
     });
 
-    it("erc20 as packet token and eth as gas token", async function() {
+    it("erc20 as packet token and eth as gas token with deploy", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
         const hexlinkToken = await deployments.get("HexlinkToken");
@@ -163,7 +163,7 @@ describe("Hexlink Redpacket", function() {
                 [id, tester.address]
             )
         );
-        const signature = validator.signMessage(
+        const signature = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
         const tx2 = await redPacket.connect(deployer).claim({
@@ -171,6 +171,236 @@ describe("Hexlink Redpacket", function() {
             packet,
             claimer: tester.address,
             signature
+        });
+        await tx2.wait();
+    });
+
+    it("erc20 as packet token and eth as gas token", async function() {
+        const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+        const hexlinkToken = await deployments.get("HexlinkToken");
+        const hexlink = await getHexlink();
+        const redPacket = await getRedPacket();
+        const accountAddr = await hexlink.addressOfName(sender);
+
+        // deploy
+        const accountIface = await iface("AccountSimple");
+        const initData = accountIface.encodeFunctionData("init", [
+            tester.address, []
+        ]);
+        const authProof = await run("build_deploy_auth_proof", {
+            name: sender,
+            identityType: "twitter.com",
+            authType: "oauth",
+            data: initData
+        });
+        await hexlink.connect(tester).deploy(sender, initData, authProof);
+        const account = await ethers.getContractAt("AccountSimple", accountAddr);
+
+        // create redpacket
+        const packet = {
+            token: hexlinkToken.address,
+            salt: ethers.constants.HashZero,
+            balance: 10000,
+            validator: validator.address,
+            split: 10,
+            mode: 2
+        };
+        // deposit some token to account str
+        const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
+        await token.connect(deployer).transfer(accountAddr, 1000000);
+        await tester.sendTransaction({to: accountAddr, value: ethers.utils.parseEther("1.0")});
+
+        // build op to deposit gas sponsorship
+        const id = genRedPacketId(redPacket.address, accountAddr, packet);
+        const op1 = {
+            to: accountAddr,
+            value: 0,
+            callData: accountIface.encodeFunctionData(
+                "deposit", [id, tester.address, ethers.constants.AddressZero, 100 * 10]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build op to approve red packet for packet token
+        const op2 = {
+            to: hexlinkToken.address,
+            value: 0,
+            callData: token.interface.encodeFunctionData(
+                "approve", [redPacket.address, packet.balance]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build op to create red packet
+        const redPacketIface = await iface("HappyRedPacketImpl");
+        const op3 = {
+            to: redPacket.address,
+            value: 0,
+            callData: redPacketIface.encodeFunctionData(
+                "create", [packet]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build txData for execBatch
+        const opsData = accountIface.encodeFunctionData(
+            "execBatch",
+            [[op1, op2, op3]]
+        );
+        const gas = {
+            receiver: tester.address,
+            token: ethers.constants.AddressZero,
+            price: 0,
+        };
+        const message = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                ["bytes", "uint256", "tuple(address, address, uint256)"],
+                [opsData, 0, [gas.receiver, gas.token, gas.price]]
+            )
+        );
+        const signature = await tester.signMessage(ethers.utils.arrayify(message));
+        const nonce = await account.nonce();
+        const tx = await account.connect(deployer).validateAndCallWithGasRefund(
+            opsData, nonce, signature, gas
+        );
+        const receipt = await tx.wait();
+        const event = receipt.events.find((e: any) => e.event === "GasPaid");
+        console.log(event.args);
+        console.log("gas payment = "  + event.args.payment.toString());
+        console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
+        console.log("real gas cost = "  + receipt.gasUsed.toNumber());
+        console.log("expected payment = "  + receipt.gasUsed.mul(receipt.effectiveGasPrice).toString());
+
+        const hash = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                ["bytes32", "address"],
+                [id, tester.address]
+            )
+        );
+        const sig = await validator.signMessage(
+            ethers.utils.arrayify(hash)
+        );
+        const tx2 = await redPacket.connect(deployer).claim({
+            creator: accountAddr,
+            packet,
+            claimer: tester.address,
+            signature: sig
+        });
+        await tx2.wait();
+    });
+
+    it("erc20 as gas token", async function() {
+        const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+        const hexlinkToken = await deployments.get("HexlinkToken");
+        const hexlink = await getHexlink();
+        const redPacket = await getRedPacket();
+        const accountAddr = await hexlink.addressOfName(sender);
+
+        // deploy
+        const accountIface = await iface("AccountSimple");
+        const initData = accountIface.encodeFunctionData("init", [
+            tester.address, []
+        ]);
+        const authProof = await run("build_deploy_auth_proof", {
+            name: sender,
+            identityType: "twitter.com",
+            authType: "oauth",
+            data: initData
+        });
+        await hexlink.connect(tester).deploy(sender, initData, authProof);
+        const account = await ethers.getContractAt("AccountSimple", accountAddr);
+
+        // create redpacket
+        const packet = {
+            token: hexlinkToken.address,
+            salt: ethers.constants.HashZero,
+            balance: 10000,
+            validator: validator.address,
+            split: 10,
+            mode: 2
+        };
+        // deposit some token to account str
+        const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
+        await token.connect(deployer).transfer(accountAddr, "1000000000000000000");
+        await tester.sendTransaction({to: accountAddr, value: ethers.utils.parseEther("1.0")});
+
+        // build op to deposit gas sponsorship
+        const id = genRedPacketId(redPacket.address, accountAddr, packet);
+        const op1 = {
+            to: accountAddr,
+            value: 0,
+            callData: accountIface.encodeFunctionData(
+                "deposit", [id, tester.address, ethers.constants.AddressZero, 100 * 10]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build op to approve red packet for packet token
+        const op2 = {
+            to: hexlinkToken.address,
+            value: 0,
+            callData: token.interface.encodeFunctionData(
+                "approve", [redPacket.address, packet.balance]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build op to create red packet
+        const redPacketIface = await iface("HappyRedPacketImpl");
+        const op3 = {
+            to: redPacket.address,
+            value: 0,
+            callData: redPacketIface.encodeFunctionData(
+                "create", [packet]
+            ),
+            callGasLimit: 0 // no limit
+        };
+
+        // build txData for execBatch
+        const opsData = accountIface.encodeFunctionData(
+            "execBatch",
+            [[op1, op2, op3]]
+        );
+        const gas = {
+            receiver: tester.address,
+            token: hexlinkToken.address,
+            price: "1000000000000", // 1 hexl = 10^18 = 0.001 ETH = 10^15 wei => 1gwei = 10^9 wei = 10^12 hexl
+        };
+        const message = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                ["bytes", "uint256", "tuple(address, address, uint256)"],
+                [opsData, 0, [gas.receiver, gas.token, gas.price]]
+            )
+        );
+        const signature = await tester.signMessage(ethers.utils.arrayify(message));
+        const nonce = await account.nonce();
+        const tx = await account.connect(deployer).validateAndCallWithGasRefund(
+            opsData, nonce, signature, gas
+        );
+        const receipt = await tx.wait();
+        const event = receipt.events.find((e: any) => e.event === "GasPaid");
+        console.log(event.args);
+        console.log("gas payment = "  + event.args.payment.toString());
+        console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
+        console.log("real gas cost = "  + receipt.gasUsed.toNumber());
+        console.log("expected payment = "  + receipt.gasUsed.mul(receipt.effectiveGasPrice).mul(1000).toString());
+
+        const hash = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                ["bytes32", "address"],
+                [id, tester.address]
+            )
+        );
+        const sig = await validator.signMessage(
+            ethers.utils.arrayify(hash)
+        );
+        const tx2 = await redPacket.connect(deployer).claim({
+            creator: accountAddr,
+            packet,
+            claimer: tester.address,
+            signature: sig
         });
         await tx2.wait();
     });
