@@ -251,12 +251,13 @@ describe("Hexlink Redpacket", function() {
         const gas = {
             receiver: tester.address,
             token: ethers.constants.AddressZero,
+            baseGas: 0,
             price: 0,
         };
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "uint256", "tuple(address, address, uint256)"],
-                [opsData, 0, [gas.receiver, gas.token, gas.price]]
+                ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
+                [opsData, 0, [gas.receiver, gas.token, gas.baseGas, gas.price]]
             )
         );
         const signature = await tester.signMessage(ethers.utils.arrayify(message));
@@ -366,12 +367,13 @@ describe("Hexlink Redpacket", function() {
         const gas = {
             receiver: tester.address,
             token: hexlinkToken.address,
+            baseGas: "0",
             price: "1000000000000", // 1 hexl = 10^18 = 0.001 ETH = 10^15 wei => 1gwei = 10^9 wei = 10^12 hexl
         };
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "uint256", "tuple(address, address, uint256)"],
-                [opsData, 0, [gas.receiver, gas.token, gas.price]]
+                ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
+                [opsData, 0, [gas.receiver, gas.token, gas.baseGas, gas.price]]
             )
         );
         const signature = await tester.signMessage(ethers.utils.arrayify(message));

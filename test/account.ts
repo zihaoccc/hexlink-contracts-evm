@@ -242,13 +242,14 @@ describe("Hexlink Account", function() {
     const nonce = await account.nonce();
     const gas = {
       token: ethers.constants.AddressZero,
+      receiver: receiverAddr,
+      baseGas: 0,
       price: 0,
-      receiver: receiverAddr
     };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256", "tuple(address, address, uint256)"],
-        [data, nonce, [gas.receiver, gas.token, gas.price]]
+        ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
+        [data, nonce, [gas.receiver, gas.token, gas.baseGas, gas.price]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -261,11 +262,11 @@ describe("Hexlink Account", function() {
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = " + gasCost.toNumber());
-    console.log("gas refund = " + e.args.amount.toNumber());
+    console.log("gas refund = " + e.args.payment.toNumber());
     // check eth balance
     expect(
       await ethers.provider.getBalance(receiverAddr)
-    ).to.eq(e.args.amount.mul(receipt.effectiveGasPrice));
+    ).to.eq(e.args.payment);
   });
 
   it("Should pay gas with gas refund with hexlink token", async function() {
@@ -298,13 +299,14 @@ describe("Hexlink Account", function() {
     const nonce = await account.nonce();
     const gas = {
       token: token.address,
+      receiver: receiverAddr,
+      baseGas: 0,
       price: 1,
-      receiver: receiverAddr
     };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256", "tuple(address, address, uint256)"],
-        [data, nonce, [gas.receiver, gas.token, gas.price]]
+        ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
+        [data, nonce, [gas.receiver, gas.token, gas.baseGas, gas.price]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -317,10 +319,10 @@ describe("Hexlink Account", function() {
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
     console.log("real gas cost = "  + gasCost.toNumber());
-    console.log("gas refund = " + e.args.amount.toNumber());
+    console.log("gas refund = " + e.args.payment.toNumber());
     // check eth balance
     expect(
       await token.balanceOf(receiverAddr)
-    ).to.eq(e.args.amount);
+    ).to.eq(e.args.payment);
   });
 });

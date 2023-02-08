@@ -12,6 +12,7 @@ contract GasPayer {
     struct GasPayment {
         address payable receiver;
         address token;
+        uint256 baseGas;
         uint256 price;
     }
 
@@ -20,7 +21,7 @@ contract GasPayer {
         uint256 gasUsed
     ) internal returns (uint256 payment) {
         require(gas.receiver != address(0), "HEXLA014");
-        gasUsed += 80000; // From 69369 to 76624 
+        gasUsed = gasUsed + gas.baseGas + 80000; // From 69369 to 76624 
         if (gas.token == address(0)) {
             payment = gasUsed * tx.gasprice;
             (bool success, ) = gas.receiver.call{value: payment}("");
