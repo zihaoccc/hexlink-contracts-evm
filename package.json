@@ -30,5 +30,8 @@
     "solidity-coverage": "^0.7.21",
     "ts-node": "^10.9.1",
     "typechain": "^5.2.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts-upgradeable": "^4.8.1"
   }
 }
