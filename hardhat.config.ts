@@ -34,25 +34,27 @@ task("accounts", "Prints the list of accounts", async (_taskArgs, hre) => {
   }
 });
 
+const accounts = process.env.HARDHAT_DEPLOYER !== undefined ?
+  [process.env.HARDHAT_DEPLOYER] :
+  [];
 const config: HardhatUserConfig = {
   solidity: "0.8.8",
   networks: {
     goerli: {
       chainId: 5,
       url: process.env.HARDHAT_GOERLI_URL || "",
-      accounts:
-        process.env.HARDHAT_DEPLOYER !== undefined ?
-          [process.env.HARDHAT_DEPLOYER] :
-          [],
+      accounts,
     },
     mumbai: {
       chainId: 80001,
       url: process.env.HARDHAT_MUMBAI_URL || "",
-      accounts:
-        process.env.HARDHAT_DEPLOYER !== undefined ?
-          [process.env.HARDHAT_DEPLOYER] :
-          [],
+      accounts,
     },
+    galileo: {
+      chainId: 3334,
+      url: "https://galileo.web3q.io:8545",
+      accounts,
+    }
   },
   gasReporter: {
     enabled: false,

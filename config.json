@@ -32,5 +32,8 @@
             "EMAIL_OTP": "0xe3F49bA9689846A061CFE2C0f669fB063E99e6AE",
             "TWITTER_OAUTH": "0xe2ef0a85B7Ace0d178424CF018A81FDa2E103C09"
         }
+    },
+    "galileo": {
+        "nftRoot": "0x72fb3F7B0A3e0ff3Ee1F488B853A85bdb781e140"
     }
 }
