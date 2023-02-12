@@ -376,7 +376,6 @@ task("upgrade_account", "upgrade account implementation")
         }
     });
 
-
 task("upgrade_redpacket", "upgrade redpacket implementation")
     .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
@@ -399,5 +398,53 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
             await hre.run("admin_schedule_or_exec", { target: redpacket.address, data });
         } else {
             await hre.run("admin_schedule_and_exec", { target: redpacket.address, data });
+        }
+    });
+
+task("set_erc721", "upgrade erc721 implementation")
+    .addFlag("nowait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const factory = await hre.run("token_factory", {});
+        await hre.run("deploy", {tags: "TOKEN"});
+        const erc721 = await hre.deployments.get("HexlinkErc721");
+        const existing = await factory.erc721Impl();
+        if (existing.toLowerCase() == erc721.address.toLowerCase()) {
+            console.log("No need to upgrade");
+            return;
+        }
+
+        const data = factory.interface.encodeFunctionData(
+            "setErc721Impl",
+            [erc721.address]
+        );
+        console.log("Upgrading from " + existing + " to " + erc721.address);
+        if (args.nowait) {
+            await hre.run("admin_schedule_or_exec", { target: factory.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: factory.address, data });
+        }
+    });
+
+
+task("upgrade_token_factory", "upgrade token factory implementation")
+    .addFlag("nowait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const factory = await hre.run("token_factory", {});
+        await hre.run("deploy", {tags: "TOKEN"});
+        const impl = await hre.deployments.get("HexlinkTokenFactoryImpl");
+        const existing = await factory.erc721Impl();
+        if (existing.toLowerCase() == impl.address.toLowerCase()) {
+            console.log("No need to upgrade");
+            return;
+        }
+        const data = factory.interface.encodeFunctionData(
+            "upgradeTo",
+            [impl.address]
+        );
+        console.log("Upgrading from " + existing + " to " + impl.address);
+        if (args.nowait) {
+            await hre.run("admin_schedule_or_exec", { target: factory.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: factory.address, data });
         }
     });
