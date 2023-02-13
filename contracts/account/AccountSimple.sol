@@ -29,8 +29,8 @@ contract AccountSimple is AccountBase, GasPayer {
         bytes32 requestId = keccak256(abi.encode(txData, nonce_));
         require(nonce_++ == _nonce, "HEXLA008");
         _validateSignature(requestId, signature);
-        (bool success,) = address(this).call(txData);
-        require(success, "HEXLA009");
+        (bool success, bytes memory data) = address(this).call(txData);
+        Address.verifyCallResult(success, data, "HEXLA009");
     }
 
     function validateAndCallWithGasRefund(
@@ -43,8 +43,8 @@ contract AccountSimple is AccountBase, GasPayer {
         bytes32 requestId = keccak256(abi.encode(txData, nonce_, gas));
         require(nonce_++ == _nonce, "HEXLA008");
         _validateSignature(requestId, signature);
-        (bool success,) = address(this).call(txData);
-        require(success, "HEXLA009");
+        (bool success, bytes memory data) = address(this).call(txData);
+        Address.verifyCallResult(success, data, "HEXLA009");
         _refundGas(gas, gasUsed - gasleft());
     }
 
