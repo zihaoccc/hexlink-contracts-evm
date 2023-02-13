@@ -50,7 +50,7 @@ contract HexlinkErc721 is
     }
 
     function _validate(address recipient, bytes memory signature) internal view {
-        bytes32 message = keccak256(abi.encode("address", recipient));
+        bytes32 message = keccak256(abi.encode(block.chainid, address(this), recipient));
         bytes32 reqHash = message.toEthSignedMessageHash();
         require(validator == reqHash.recover(signature), "HEXLA004");
     }
