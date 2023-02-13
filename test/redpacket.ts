@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run, network } from "hardhat";
 import { Contract } from "ethers";
-import { AbiCoder } from "ethers/lib/utils";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
