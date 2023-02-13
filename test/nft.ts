@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run, network } from "hardhat";
-import { Contract } from "ethers";
 
 async function iface(contract: string) {
     const artifact = await artifacts.readArtifact(contract);
@@ -41,5 +40,21 @@ describe("Hexlink Redpacket", function() {
         expect(await contract.maxSupply()).to.eq(1000);
         expect(await contract.owner()).to.eq(deployer.address);
         expect(await contract.validator()).to.eq(deployer.address);
+
+        // mint
+        const message = ethers.utils.keccak256(
+            ethers.utils.defaultAbiCoder.encode(
+                ["uint256", "address", "address"],
+                [network.config.chainId, deloyed, deployer.address]
+            )
+        );
+        console.log(message);
+        const signature = await deployer.signMessage(
+            ethers.utils.arrayify(message)
+        );
+        const tx2 = await contract.connect(deployer).mint(
+            deployer.address, signature
+        );
+        console.log(tx2);
     });
 });
