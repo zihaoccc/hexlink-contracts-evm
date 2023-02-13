@@ -32,6 +32,7 @@ contract HexlinkTokenFactoryImpl is Ownable, UUPSUpgradeable {
     }
 
     function deployErc721(bytes32 salt, bytes memory initData) external {
+        salt = keccak256(abi.encode(msg.sender, salt));
         address deployed = Clones.cloneDeterministic(address(this), salt);
         (bool success, bytes memory data) = deployed.call(initData);
         Address.verifyCallResult(success, data, "Failed to init contract");

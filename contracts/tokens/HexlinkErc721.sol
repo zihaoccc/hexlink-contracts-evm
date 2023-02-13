@@ -55,7 +55,9 @@ contract HexlinkErc721 is
         require(validator == reqHash.recover(signature), "HEXLA004");
     }
 
-    function _baseURI() internal view override returns (string memory) {
+    function tokenURI(uint256 /* tokenId */)
+        public view override returns (string memory)
+    {
         return baseTokenURI;
     }
 }
