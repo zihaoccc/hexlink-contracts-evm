@@ -27,9 +27,7 @@ contract HexlinkTokenFactoryImpl is Ownable, UUPSUpgradeable {
 
     function _authorizeUpgrade(
         address newImplementation
-    ) internal view onlyOwner override {
-
-    }
+    ) internal view onlyOwner override { }
 
     function deployErc721(bytes32 salt, bytes memory initData) external {
         salt = keccak256(abi.encode(msg.sender, salt));

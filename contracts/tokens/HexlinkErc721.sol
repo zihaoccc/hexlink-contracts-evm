@@ -19,19 +19,27 @@ contract HexlinkErc721 is
     uint256 public maxSupply;
     uint256 public tokenId = 0;
     address public validator;
+    bool public transferrable;
+    mapping(address => uint256) internal minted_;
 
     function init(
         string memory name_,
         string memory symbol_,
         string memory baseTokenURI_,
         uint256 maxSupply_,
-        address validator_
+        address validator_,
+        bool transferrable_
     ) external initializer {
         __ERC721_init(name_, symbol_);
         __Ownable_init();
         maxSupply = maxSupply_;
         validator = validator_;
         baseTokenURI = baseTokenURI_;
+        transferrable = transferrable_;
+    }
+
+    function version() external pure returns(uint256) {
+        return 1;
     }
 
     function mint(
@@ -40,7 +48,8 @@ contract HexlinkErc721 is
     ) external returns (uint256) {
         tokenId += 1;
         require(tokenId <= maxSupply, "Exceeding max supply");
-        _validate(recipient, signature);
+        _validateSiganture(recipient, signature);
+        _validateCount();
         _safeMint(recipient, tokenId);
         return tokenId;
     }
@@ -49,15 +58,29 @@ contract HexlinkErc721 is
         validator = _validator;
     }
 
-    function _validate(address recipient, bytes memory signature) internal view {
+    function _validateSiganture(address recipient, bytes memory signature) internal view {
         bytes32 message = keccak256(abi.encode(block.chainid, address(this), recipient));
         bytes32 reqHash = message.toEthSignedMessageHash();
         require(validator == reqHash.recover(signature), "invalid signature");
+    }
+
+    function _validateCount() internal {
+        require(minted_[msg.sender] == 0, "Already minted");
+        minted_[msg.sender] += 1;
     }
 
     function tokenURI(uint256 /* tokenId */)
         public view override returns (string memory)
     {
         return baseTokenURI;
+    }
+
+    function _afterTokenTransfer(
+        address from,
+        address /* to */,
+        uint256 /* firstTokenId */,
+        uint256 /* batchSize */
+    ) internal override virtual {
+        require(from == address(0) || transferrable, "Transfer not allowed");
     }
 }
