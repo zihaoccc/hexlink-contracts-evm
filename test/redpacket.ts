@@ -165,6 +165,7 @@ describe("Hexlink Redpacket", function() {
         const signature = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
         const tx2 = await redPacket.connect(deployer).claim({
             creator: accountAddr,
             packet,
@@ -172,6 +173,7 @@ describe("Hexlink Redpacket", function() {
             signature
         });
         await tx2.wait();
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
 
     it("erc20 as packet token and eth as gas token", async function() {
@@ -266,7 +268,6 @@ describe("Hexlink Redpacket", function() {
         );
         const receipt = await tx.wait();
         const event = receipt.events.find((e: any) => e.event === "GasPaid");
-        console.log(event.args);
         console.log("gas payment = "  + event.args.payment.toString());
         console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
         console.log("real gas cost = "  + receipt.gasUsed.toNumber());
@@ -281,6 +282,7 @@ describe("Hexlink Redpacket", function() {
         const sig = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
         const tx2 = await redPacket.connect(deployer).claim({
             creator: accountAddr,
             packet,
@@ -288,6 +290,7 @@ describe("Hexlink Redpacket", function() {
             signature: sig
         });
         await tx2.wait();
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
 
     it("erc20 as gas token", async function() {
@@ -382,7 +385,6 @@ describe("Hexlink Redpacket", function() {
         );
         const receipt = await tx.wait();
         const event = receipt.events.find((e: any) => e.event === "GasPaid");
-        console.log(event.args);
         console.log("gas payment = "  + event.args.payment.toString());
         console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
         console.log("real gas cost = "  + receipt.gasUsed.toNumber());
@@ -397,6 +399,8 @@ describe("Hexlink Redpacket", function() {
         const sig = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
+
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
         const tx2 = await redPacket.connect(deployer).claim({
             creator: accountAddr,
             packet,
@@ -404,5 +408,6 @@ describe("Hexlink Redpacket", function() {
             signature: sig
         });
         await tx2.wait();
+        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
 });

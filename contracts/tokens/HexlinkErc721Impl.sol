@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-contract HexlinkErc721 is
+contract HexlinkErc721Impl is
     Initializable,
     OwnableUpgradeable,
     ERC721Upgradeable
@@ -52,6 +52,10 @@ contract HexlinkErc721 is
         _validateCount();
         _safeMint(recipient, tokenId);
         return tokenId;
+    }
+
+    function getMintedCount(address user) external view returns(uint256){
+        return minted_[user];
     }
 
     function setValidator(address _validator) external onlyOwner {

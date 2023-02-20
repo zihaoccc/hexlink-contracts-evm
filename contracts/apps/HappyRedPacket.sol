@@ -81,6 +81,13 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
         packets_[packetId].balance = 0;
     }
 
+    function getClaimedCount(
+        bytes32 packetId,
+        address claimer
+    ) external view returns(uint256){
+        return count_[packetId][claimer];
+    }
+
     function claim(RedPacketClaim calldata c) public {
         bytes32 packetId = _packetId(c.creator, c.packet);
         if (c.signature.length == 0) {

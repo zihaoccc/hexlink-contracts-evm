@@ -1,47 +1,44 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployFunction } from "hardhat-deploy/types";
+import {HardhatRuntimeEnvironment} from "hardhat/types";
+import {DeployFunction} from "hardhat-deploy/types";
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  // deploy account implementation
-  await deploy("AccountSimple", {
+  await deploy("HexlinkErc721Impl", {
     from: deployer,
-    args: [],
     log: true,
     autoMine: true,
   });
 
-  // deploy account beacon contract
   try {
-    await deployments.get("AccountProxy");
+    await deployments.get("HexlinkErc721Proxy");
     console.log(
-      "AccountBeacon is already deployed, please " + 
+      "HexlinkErc721Proxy is already deployed, please " + 
       "upgrade instead of deploying a new one"
     );
     return;
   } catch {
-    const accountImpl = await hre.deployments.get("AccountSimple");
+    const impl = await hre.deployments.get("HexlinkErc721Impl");
     const admin = await hre.deployments.get("HexlinkAdmin");
-    await deploy("AccountBeacon", {
+    await deploy("HexlinkErc721Beacon", {
       from: deployer,
-      args: [accountImpl.address, admin.address],
+      args: [impl.address, admin.address],
       log: true,
       autoMine: true,
     });
 
     // deploy beacon proxy contract
-    const beacon = await hre.deployments.get("AccountBeacon");
-    await deploy("AccountProxy", {
+    const beacon = await hre.deployments.get("HexlinkErc721Beacon");
+    await deploy("HexlinkErc721Proxy", {
       from: deployer,
       args: [beacon.address],
       log: true,
       autoMine: true,
     });
   }
-};
+}
 
 export default func;
-func.tags = ["HEXL", "ACCOUNT"];
+func.tags = ["HEXL", "ERC721"];

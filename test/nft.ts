@@ -15,7 +15,7 @@ describe("Hexlink Redpacket", function() {
         const { deployer, validator } = await ethers.getNamedSigners();
 
         const tokenFactory = await run("token_factory", {});
-        const erc721Iface = await iface("HexlinkErc721");
+        const erc721Iface = await iface("HexlinkErc721Impl");
         const initData = erc721Iface.encodeFunctionData(
             "init",
             ["Hexlink NFT", "HEXL", "void", "1000", deployer.address, true]
@@ -33,7 +33,7 @@ describe("Hexlink Redpacket", function() {
         );
         const deloyed = event.args.deployed;
 
-        const contract = await ethers.getContractAt("HexlinkErc721", deloyed);
+        const contract = await ethers.getContractAt("HexlinkErc721Impl", deloyed);
         expect(await contract.name()).to.eq("Hexlink NFT");
         expect(await contract.symbol()).to.eq("HEXL");
         expect(await contract.tokenURI(1)).to.eq("void");
@@ -52,9 +52,11 @@ describe("Hexlink Redpacket", function() {
         const signature = await deployer.signMessage(
             ethers.utils.arrayify(message)
         );
+        expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
             deployer.address, signature
         );
+        expect(await contract.getMintedCount(deployer.address)).to.eq(1);
         console.log(tx2);
 
         await expect(
@@ -74,7 +76,7 @@ describe("Hexlink Redpacket", function() {
         const { deployer, validator } = await ethers.getNamedSigners();
 
         const tokenFactory = await run("token_factory", {});
-        const erc721Iface = await iface("HexlinkErc721");
+        const erc721Iface = await iface("HexlinkErc721Impl");
         const initData = erc721Iface.encodeFunctionData(
             "init",
             ["Hexlink NFT", "HEXL", "void", "1000", deployer.address, false]
@@ -92,7 +94,7 @@ describe("Hexlink Redpacket", function() {
         );
         const deloyed = event.args.deployed;
 
-        const contract = await ethers.getContractAt("HexlinkErc721", deloyed);
+        const contract = await ethers.getContractAt("HexlinkErc721Impl", deloyed);
         expect(await contract.name()).to.eq("Hexlink NFT");
         expect(await contract.symbol()).to.eq("HEXL");
         expect(await contract.tokenURI(1)).to.eq("void");
@@ -111,10 +113,12 @@ describe("Hexlink Redpacket", function() {
         const signature = await deployer.signMessage(
             ethers.utils.arrayify(message)
         );
+        expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
             deployer.address, signature
         );
         console.log(tx2);
+        expect(await contract.getMintedCount(deployer.address)).to.eq(1);
 
         await expect(
             contract.connect(deployer).mint(

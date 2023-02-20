@@ -10,6 +10,7 @@ import SafeServiceClient, {
     ProposeTransactionProps,
     SafeInfoResponse,
   } from '@safe-global/safe-service-client';
+import { hardhatArguments } from "hardhat";
 
 const processArgs = async function(
     timelock: Contract,
@@ -401,23 +402,23 @@ task("upgrade_redpacket", "upgrade redpacket implementation")
         }
     });
 
-task("set_erc721", "upgrade erc721 implementation")
+task("set_erc721_impl", "set erc721 base")
     .addFlag("nowait")
-    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
         const factory = await hre.run("token_factory", {});
-        await hre.run("deploy", {tags: "TOKEN"});
-        const erc721 = await hre.deployments.get("HexlinkErc721");
+        await hre.run("deploy", {tags: "ERC721"});
+
+        const newImpl = await hre.deployments.get("HexlinkErc721Proxy");
         const existing = await factory.erc721Impl();
-        if (existing.toLowerCase() == erc721.address.toLowerCase()) {
+        if (existing.toLowerCase() == newImpl.address.toLowerCase()) {
             console.log("No need to upgrade");
             return;
         }
-
         const data = factory.interface.encodeFunctionData(
             "setErc721Impl",
-            [erc721.address]
+            [newImpl.address]
         );
-        console.log("Upgrading from " + existing + " to " + erc721.address);
+        console.log("Upgrading from " + existing + " to " + newImpl.address);
         if (args.nowait) {
             await hre.run("admin_schedule_or_exec", { target: factory.address, data });
         } else {
@@ -425,6 +426,33 @@ task("set_erc721", "upgrade erc721 implementation")
         }
     });
 
+task("upgrade_erc721_beacon", "upgrade erc721 beacon implementation")
+    .addFlag("nowait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await hre.deployments.get("HexlinkErc721Beacon");
+        const beacon = await hre.ethers.getContractAt(
+            "HexlinkErc721Beacon", deployment.address
+        );
+
+        await hre.run("deploy", {tags: "ERC721"});
+        const newImpl = await hre.deployments.get("HexlinkErc721Impl");
+        const existing = await beacon.implementation();
+        if (existing.toLowerCase() === newImpl.address.toLowerCase()) {
+            console.log("No need to upgrade");
+            return;
+        }
+
+        const data = beacon.interface.encodeFunctionData(
+            "upgradeTo",
+            [newImpl.address]
+        );
+        console.log("Upgrading from " + existing + " to " + newImpl.address);
+        if (args.nowait) {
+            await hre.run("admin_schedule_or_exec", { target: beacon.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: beacon.address, data });
+        }
+    });
 
 task("upgrade_token_factory", "upgrade token factory implementation")
     .addFlag("nowait")
@@ -432,7 +460,7 @@ task("upgrade_token_factory", "upgrade token factory implementation")
         const factory = await hre.run("token_factory", {});
         await hre.run("deploy", {tags: "TOKEN"});
         const impl = await hre.deployments.get("HexlinkTokenFactoryImpl");
-        const existing = await factory.erc721Impl();
+        const existing = await factory.implementation();
         if (existing.toLowerCase() == impl.address.toLowerCase()) {
             console.log("No need to upgrade");
             return;

@@ -6,11 +6,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  await deploy("HexlinkErc721", {
-    from: deployer,
-    log: true,
-    autoMine: true,
-  });
   await deploy("HexlinkTokenFactoryImpl", {
     from: deployer,
     log: true,
@@ -40,15 +35,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const admin = await hre.deployments.get("HexlinkAdmin");
   if ((await factory.owner()) !== admin.address) {
     console.log("initiating token factory...");
-    const erc721Impl = await deployments.get("HexlinkErc721");
+    const erc721Impl = await deployments.get("HexlinkErc721Proxy");
     await factory.init(admin.address, erc721Impl.address);
   }
-
-  await deploy("HexlinkErc721", {
-    from: deployer,
-    log: true,
-    autoMine: true,
-  });
 
   await deploy("HexlinkToken", {
     from: deployer,
