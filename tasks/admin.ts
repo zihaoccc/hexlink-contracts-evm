@@ -10,7 +10,6 @@ import SafeServiceClient, {
     ProposeTransactionProps,
     SafeInfoResponse,
   } from '@safe-global/safe-service-client';
-import { hardhatArguments } from "hardhat";
 
 const processArgs = async function(
     timelock: Contract,
@@ -474,5 +473,57 @@ task("upgrade_token_factory", "upgrade token factory implementation")
             await hre.run("admin_schedule_or_exec", { target: factory.address, data });
         } else {
             await hre.run("admin_schedule_and_exec", { target: factory.address, data });
+        }
+    });
+
+task("upgrade_swap", "upgrade swap implementation")
+    .addFlag("nowait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await hre.deployments.get("HexlinkSwapProxy");
+        const proxy = await hre.ethers.getContractAt(
+            "HexlinkSwapImpl", deployment.address
+        );
+
+        await hre.run("deploy", {tags: "SWAP"});
+        const impl = await hre.deployments.get("HexlinkSwapImpl");
+        const existing = await proxy.implementation();
+        if (existing.toLowerCase() == impl.address.toLowerCase()) {
+            console.log("No need to upgrade");
+            return;
+        }
+        const data = proxy.interface.encodeFunctionData(
+            "upgradeTo",
+            [impl.address]
+        );
+        console.log("Upgrading from " + existing + " to " + impl.address);
+        if (args.nowait) {
+            await hre.run("admin_schedule_or_exec", { target: proxy.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: proxy.address, data });
+        }
+    });
+
+task("set_gas_prices", "set prices of gas token")
+    .addFlag("nowait")
+    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+        const deployment = await hre.deployments.get("HexlinkSwapProxy");
+        const swap = await hre.ethers.getContractAt(
+            "HexlinkSwapImpl", deployment.address
+        );
+        const gasTokens = netConf(hre)["gasTokens"] || [];
+        if (gasTokens.length == 0) {
+            console.log("no gas token found, exiting...");
+            return;
+        }
+        const tokens = gasTokens.map((t : any) => t.address);
+        const prices = gasTokens.map((t : any) => t.price);
+        const data = swap.interface.encodeFunctionData(
+            "setPrices",
+            [tokens, prices]
+        );
+        if (args.nowait) {
+            await hre.run("admin_schedule_or_exec", { target: swap.address, data });
+        } else {
+            await hre.run("admin_schedule_and_exec", { target: swap.address, data });
         }
     });

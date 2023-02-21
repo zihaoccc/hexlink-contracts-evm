@@ -7,8 +7,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "../utils/GasSponsor.sol";
 
-contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
+contract HappyRedPacketImpl is Ownable, UUPSUpgradeable, GasSponsor {
     using ECDSA for bytes32;
     using Address for address;
 
@@ -23,26 +24,22 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
         uint amount
     );
 
-    struct RedPacketClaim {
-        address creator;
-        RedPacketData packet;
-        address claimer;
-        bytes signature;
-    }
-
     struct RedPacketData {
+        address creator;
         address token;
         bytes32 salt;
         uint256 balance;
         address validator;
         uint32 split;
         uint8 mode; // 0: not_set, 1: fixed, 2: randomized
+        bool sponsorGas;
     }
 
     struct RedPacket {
         uint256 createdAt;
         uint256 balance;
         uint32 split;
+        uint256 gasSponsorship;
     }
     // user => PacketId => Packet as Packet
     mapping(bytes32 => RedPacket) internal packets_;
@@ -56,29 +53,25 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
 
     function create(RedPacketData calldata pd) external payable {
         require(pd.mode == 1 || pd.mode == 2, "Invalid mode");
-        bytes32 packetId = _packetId(msg.sender, pd);
+        bytes32 packetId = _packetId(pd);
         require(packets_[packetId].createdAt == 0, "Packet already created");
         if (pd.token != address(0)) {
             IERC20(pd.token).transferFrom(msg.sender, address(this), pd.balance);
         } else {
-            require(msg.value >= pd.balance, "Insufficient balance");
+            require(msg.value == pd.balance, "Insufficient balance");
         }
         packets_[packetId].balance += pd.balance;
         packets_[packetId].split += pd.split;
         packets_[packetId].createdAt = block.timestamp;
-        emit Created(packetId, msg.sender, pd);
+        emit Created(packetId, pd.creator, pd);
     }
 
     function getPacket(bytes32 id) external view returns(RedPacket memory) {
         return packets_[id];
     }
 
-    function refund(RedPacketData calldata pd) external {
-        bytes32 packetId = _packetId(msg.sender, pd);
-        // packet locked for one day before withdraw
-        require(block.timestamp - packets_[packetId].createdAt > 86400, "Packet locked");
-        _transfer(pd.token, msg.sender, packets_[packetId].balance);
-        packets_[packetId].balance = 0;
+    function deposit(bytes32 packetId) external payable {
+        packets_[packetId].gasSponsorship += msg.value;
     }
 
     function getClaimedCount(
@@ -88,16 +81,45 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
         return count_[packetId][claimer];
     }
 
-    function claim(RedPacketClaim calldata c) public {
-        bytes32 packetId = _packetId(c.creator, c.packet);
-        if (c.signature.length == 0) {
-            require(msg.sender == c.packet.validator, "Unauthorized");
-        } else {
-            bytes32 message = keccak256(abi.encode(packetId, c.claimer));
-            bytes32 reqHash = message.toEthSignedMessageHash();
-            require(c.packet.validator == reqHash.recover(c.signature), "Invalid signature");
+    function refund(RedPacketData calldata pd) external {
+        require(pd.creator == msg.sender, "Unauthorized");
+        bytes32 packetId = _packetId(pd);
+        // packet locked for one day before withdraw
+        require(block.timestamp - packets_[packetId].createdAt > 86400, "Packet locked");
+
+        uint256 balance = packets_[packetId].balance;
+        if (balance > 0) {
+            packets_[packetId].balance = 0;
+            _transfer(pd.token, msg.sender, balance);
         }
-        _claim(packetId, c.packet, c.claimer);
+        uint256 depositLeft = packets_[packetId].gasSponsorship;
+        if (depositLeft > 0) {
+            packets_[packetId].gasSponsorship = 0;
+            Address.sendValue(payable(msg.sender), depositLeft);
+        }
+    }
+
+    function claim(
+        RedPacketData calldata packet,
+        address claimer,
+        address refundReceiver,
+        bytes calldata signature
+    ) public {
+        uint256 gasUsed = gasleft();
+        bytes32 packetId = _packetId(packet);
+        if (signature.length == 0) {
+            require(msg.sender == packet.validator, "Unauthorized");
+        } else {
+            bytes32 message = keccak256(abi.encode(packetId, claimer, refundReceiver));
+            bytes32 reqHash = message.toEthSignedMessageHash();
+            require(packet.validator == reqHash.recover(signature), "Invalid signature");
+        }
+        _claim(packetId, packet, claimer);
+        if (packet.sponsorGas && refundReceiver != address(0)) {
+            uint256 payment = (gasUsed + 80000) * tx.gasprice;
+            packets_[packetId].gasSponsorship -= payment;
+            _sponsorGas(payment, refundReceiver);
+        }
     }
 
     function _claim(
@@ -150,10 +172,9 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable {
     }
 
     function _packetId(
-        address creator,
         RedPacketData calldata pd
     ) internal view returns (bytes32) {
-        return keccak256(abi.encode(block.chainid, address(this), creator, pd));
+        return keccak256(abi.encode(block.chainid, address(this), pd));
     }
 
     function implementation() external view returns (address) {

@@ -17,7 +17,24 @@
         "oracles": {
             "EMAIL_OTP": "0xF514Ae7306652DcCb3B215AcE1396aaee2B3C204",
             "TWITTER_OAUTH": "0x8dd83bfB002baD8589a7C4dcDA40cd5E6430e533"
-        }
+        },
+        "gasTokens": [
+            {
+                "address": "0x2f3a40a3db8a7e3d09b0adfefbce4f6f81927557",
+                "decimals": 6,
+                "price": "1500000000"
+            },
+            {
+                "address": "0x07865c6E87B9F70255377e024ace6630C1Eaa37F",
+                "decimals": 6,
+                "price": "1500000000"
+            },
+            {
+                "address": "0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844",
+                "decimals": 18,
+                "price": "1500000000000000000000"
+            }
+        ]
     },
     "mumbai": {
         "validator": "0xEF2e3F91209F88A3143e36Be10D52502162426B3",
@@ -31,7 +48,14 @@
         "oracles": {
             "EMAIL_OTP": "0xe3F49bA9689846A061CFE2C0f669fB063E99e6AE",
             "TWITTER_OAUTH": "0xe2ef0a85B7Ace0d178424CF018A81FDa2E103C09"
-        }
+        },
+        "gasTokens": [
+            {
+                "address": "0xE097d6B3100777DC31B34dC2c58fB524C2e76921",
+                "decimals": 6,
+                "price": "1500000000"
+            }
+        ]
     },
     "galileo": {
         "nftRoot": "0x72fb3F7B0A3e0ff3Ee1F488B853A85bdb781e140"

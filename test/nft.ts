@@ -44,8 +44,13 @@ describe("Hexlink Redpacket", function() {
         // mint
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["uint256", "address", "address"],
-                [network.config.chainId, deloyed, deployer.address]
+                ["uint256", "address", "address", "address"],
+                [
+                    network.config.chainId,
+                    deloyed,
+                    deployer.address,
+                    ethers.constants.AddressZero
+                ]
             )
         );
         console.log(message);
@@ -54,14 +59,16 @@ describe("Hexlink Redpacket", function() {
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
-            deployer.address, signature
+            deployer.address, ethers.constants.AddressZero, signature
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(1);
         console.log(tx2);
 
         await expect(
             contract.connect(deployer).mint(
-                deployer.address, signature
+                deployer.address,
+                ethers.constants.AddressZero,
+                signature
             )
         ).to.be.revertedWith("Already minted");
 
@@ -105,8 +112,13 @@ describe("Hexlink Redpacket", function() {
         // mint
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["uint256", "address", "address"],
-                [network.config.chainId, deloyed, deployer.address]
+                ["uint256", "address", "address", "address"],
+                [
+                    network.config.chainId,
+                    deloyed,
+                    deployer.address,
+                    ethers.constants.AddressZero
+                ]
             )
         );
         console.log(message);
@@ -115,14 +127,16 @@ describe("Hexlink Redpacket", function() {
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
-            deployer.address, signature
+            deployer.address, ethers.constants.AddressZero, signature
         );
         console.log(tx2);
         expect(await contract.getMintedCount(deployer.address)).to.eq(1);
 
         await expect(
             contract.connect(deployer).mint(
-                deployer.address, signature
+                deployer.address,
+                ethers.constants.AddressZero,
+                signature
             )
         ).to.be.revertedWith("Already minted");
 

@@ -4,7 +4,6 @@ pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "hardhat/console.sol";
 
 contract GasPayer {
     event GasPaid(address to, uint256 payment);

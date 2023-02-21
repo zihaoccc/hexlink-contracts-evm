@@ -24,21 +24,22 @@ async function getRedPacket() : Promise<Contract> {
 }
 
 function genRedPacketId(contract: string, creator: string, packet: any) : string {
-    const redPacketType = "tuple(address,bytes32,uint256,address,uint32,uint8)";
+    const redPacketType = "tuple(address,address,bytes32,uint256,address,uint32,uint8,bool)";
     return ethers.utils.keccak256(
         ethers.utils.defaultAbiCoder.encode(
-            ["uint256", "address", "address", redPacketType],
+            ["uint256", "address", redPacketType],
             [
                 network.config.chainId,
                 contract,
-                creator,
                 [
+                    packet.creator,
                     packet.token,
                     packet.salt,
                     packet.balance,
                     packet.validator,
                     packet.split,
-                    packet.mode
+                    packet.mode,
+                    packet.sponsorGas
                 ]
             ]
         )
@@ -59,12 +60,14 @@ describe("Hexlink Redpacket", function() {
         const accountAddr = await hexlink.addressOfName(sender);
 
         const packet = {
+            creator: accountAddr,
             token: hexlinkToken.address,
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
             split: 10,
-            mode: 2
+            mode: 2,
+            sponsorGas: true,
         };
         // deposit some token to tester
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
@@ -158,20 +161,20 @@ describe("Hexlink Redpacket", function() {
 
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes32", "address"],
-                [id, tester.address]
+                ["bytes32", "address", "address"],
+                [id, tester.address, ethers.constants.AddressZero]
             )
         );
         const signature = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
-        const tx2 = await redPacket.connect(deployer).claim({
-            creator: accountAddr,
+        const tx2 = await redPacket.connect(deployer).claim(
             packet,
-            claimer: tester.address,
+            tester.address,
+            ethers.constants.AddressZero,
             signature
-        });
+        );
         await tx2.wait();
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
@@ -200,12 +203,14 @@ describe("Hexlink Redpacket", function() {
 
         // create redpacket
         const packet = {
+            creator: accountAddr,
             token: hexlinkToken.address,
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
             split: 10,
-            mode: 2
+            mode: 2,
+            sponsorGas: true,
         };
         // deposit some token to account str
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
@@ -275,20 +280,20 @@ describe("Hexlink Redpacket", function() {
 
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes32", "address"],
-                [id, tester.address]
+                ["bytes32", "address", "address"],
+                [id, tester.address, ethers.constants.AddressZero]
             )
         );
         const sig = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
-        const tx2 = await redPacket.connect(deployer).claim({
-            creator: accountAddr,
+        const tx2 = await redPacket.connect(deployer).claim(
             packet,
-            claimer: tester.address,
-            signature: sig
-        });
+            tester.address,
+            ethers.constants.AddressZero,
+            sig,
+        );
         await tx2.wait();
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
@@ -317,12 +322,14 @@ describe("Hexlink Redpacket", function() {
 
         // create redpacket
         const packet = {
+            creator: accountAddr,
             token: hexlinkToken.address,
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
             split: 10,
-            mode: 2
+            mode: 2,
+            sponsorGas: true,
         };
         // deposit some token to account str
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
@@ -392,8 +399,8 @@ describe("Hexlink Redpacket", function() {
 
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes32", "address"],
-                [id, tester.address]
+                ["bytes32", "address", "address"],
+                [id, tester.address, ethers.constants.AddressZero]
             )
         );
         const sig = await validator.signMessage(
@@ -401,12 +408,12 @@ describe("Hexlink Redpacket", function() {
         );
 
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
-        const tx2 = await redPacket.connect(deployer).claim({
-            creator: accountAddr,
+        const tx2 = await redPacket.connect(deployer).claim(
             packet,
-            claimer: tester.address,
-            signature: sig
-        });
+            tester.address,
+            ethers.constants.AddressZero,
+            sig
+        );
         await tx2.wait();
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
