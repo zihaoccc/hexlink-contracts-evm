@@ -425,7 +425,7 @@ task("set_erc721_impl", "set erc721 base")
         }
     });
 
-task("upgrade_erc721_beacon", "upgrade erc721 beacon implementation")
+task("upgrade_erc721", "upgrade erc721 beacon implementation")
     .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("HexlinkErc721Beacon");
@@ -503,7 +503,7 @@ task("upgrade_swap", "upgrade swap implementation")
         }
     });
 
-task("set_gas_prices", "set prices of gas token")
+task("set_swap_prices", "set prices of gas token")
     .addFlag("nowait")
     .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("HexlinkSwapProxy");
@@ -517,6 +517,8 @@ task("set_gas_prices", "set prices of gas token")
         }
         const tokens = gasTokens.map((t : any) => t.address);
         const prices = gasTokens.map((t : any) => t.price);
+        console.log(tokens);
+        console.log(prices);
         const data = swap.interface.encodeFunctionData(
             "setPrices",
             [tokens, prices]
