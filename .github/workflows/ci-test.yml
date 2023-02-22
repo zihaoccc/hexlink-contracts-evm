@@ -40,10 +40,8 @@ jobs:
     steps:
       - run: |
           echo build: ${{ needs.build.result }}
-          echo deploy_local: ${{ needs.deploy_local.result }}
           success="${{
             needs.build.result=='success'
-            && needs.deploy_local.result=='success'
           }}"
           if [[ "$success" != "true" ]]; then
             exit 1;
