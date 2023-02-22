@@ -47,6 +47,19 @@ const deployAccount = async function(
   );
 }
 
+async function getHexlinkSwap() : Promise<Contract> {
+  const deployment = await deployments.get("HexlinkSwapProxy");
+  return await ethers.getContractAt("HexlinkSwapImpl", deployment.address);
+}
+
+async function setGasPrice(token: Contract, swap: Contract) {
+  const data = swap.interface.encodeFunctionData(
+      "setPrice",
+      [token.address, ethers.BigNumber.from(10).pow(18).mul(1500)]
+  );
+  await run("admin_schedule_and_exec", {target: swap.address, data})
+}
+
 describe("Hexlink Account", function() {
   beforeEach(async function() {
     const { deployer } = await ethers.getNamedSigners();
@@ -241,15 +254,15 @@ describe("Hexlink Account", function() {
     );
     const nonce = await account.nonce();
     const gas = {
+      swapper: ethers.constants.AddressZero,
       token: ethers.constants.AddressZero,
       receiver: receiverAddr,
       baseGas: 0,
-      price: 0,
     };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
-        [data, nonce, [gas.receiver, gas.token, gas.baseGas, gas.price]]
+        ["bytes", "uint256", "tuple(address, address, address, uint256)"],
+        [data, nonce, [gas.swapper, gas.token, gas.receiver, gas.baseGas]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -257,7 +270,7 @@ describe("Hexlink Account", function() {
 
     const tx = await account.connect(
       validator
-    ).validateAndCallWithGasRefund(data, nonce, signature, gas);
+    ).validateAndCallWithGasRefund(data, nonce, gas, signature);
     const receipt = await tx.wait();
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
@@ -297,16 +310,21 @@ describe("Hexlink Account", function() {
         ]
     );
     const nonce = await account.nonce();
+    const swap = await getHexlinkSwap();
+    await setGasPrice(token, swap);
+    await swap.connect(deployer).deposit({
+      value: ethers.utils.parseEther("1.0")
+    });
     const gas = {
+      swapper: swap.address,
       token: token.address,
       receiver: receiverAddr,
       baseGas: 0,
-      price: 1,
     };
     const requestId = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
-        ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
-        [data, nonce, [gas.receiver, gas.token, gas.baseGas, gas.price]]
+        ["bytes", "uint256", "tuple(address, address, address, uint256)"],
+        [data, nonce, [gas.swapper, gas.token, gas.receiver, gas.baseGas]]
       ));
     const signature = await deployer.signMessage(
       ethers.utils.arrayify(requestId)
@@ -314,7 +332,7 @@ describe("Hexlink Account", function() {
 
     const tx = await account.connect(
       validator
-    ).validateAndCallWithGasRefund(data, nonce, signature, gas);
+    ).validateAndCallWithGasRefund(data, nonce, gas, signature);
     const receipt = await tx.wait();
     const gasCost = receipt.gasUsed;
     const e = receipt.events.find((x: any) => x.event === "GasPaid");
@@ -322,7 +340,7 @@ describe("Hexlink Account", function() {
     console.log("gas refund = " + e.args.payment.toNumber());
     // check eth balance
     expect(
-      await token.balanceOf(receiverAddr)
+      await ethers.provider.getBalance(receiverAddr)
     ).to.eq(e.args.payment);
   });
 });
