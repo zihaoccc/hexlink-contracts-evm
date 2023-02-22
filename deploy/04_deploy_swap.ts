@@ -1,26 +1,11 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types";
 import {DeployFunction} from "hardhat-deploy/types";
 
-import config from '../config.json';
-function netConf(hre: HardhatRuntimeEnvironment) {
-    return config[hre.network.name as keyof typeof config] || {};
-}
-
-async function getValidator(hre: HardhatRuntimeEnvironment) {
-    let validator = netConf(hre)["validator"];
-    if (validator == undefined) {
-        validator = (await hre.getNamedAccounts())["validator"];
-    }
-    return validator;
-}
-
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
   const {deployments, getNamedAccounts} = hre;
   const {deploy} = deployments;
   const {deployer} = await getNamedAccounts();
 
-  const validator = await getValidator(hre);
-  const admin = await hre.deployments.get("HexlinkAdmin");
   await deploy("HexlinkSwapImpl", {
     from: deployer,
     log: true,
@@ -42,7 +27,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     );
     const admin = await hre.deployments.get("HexlinkAdmin");
     const initData = implContract.interface.encodeFunctionData(
-        "init", [admin.address, validator]
+        "init", [admin.address]
     );
     await deploy("HexlinkSwapProxy", {
       from: deployer,

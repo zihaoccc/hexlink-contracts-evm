@@ -23,6 +23,16 @@ async function getRedPacket() : Promise<Contract> {
     return await ethers.getContractAt("HappyRedPacketImpl", deployment.address);
 }
 
+async function getHexlinkSwap() : Promise<Contract> {
+    const deployment = await deployments.get("HexlinkSwapProxy");
+    return await ethers.getContractAt("HexlinkSwapImpl", deployment.address);
+}
+
+async function getHexlinkToken() : Promise<Contract> {
+    const deployment = await deployments.get("HexlinkToken");
+    return await ethers.getContractAt("HexlinkToken", deployment.address);
+}
+
 function genRedPacketId(contract: string, creator: string, packet: any) : string {
     const redPacketType = "tuple(address,address,bytes32,uint256,address,uint32,uint8,bool)";
     return ethers.utils.keccak256(
@@ -46,6 +56,14 @@ function genRedPacketId(contract: string, creator: string, packet: any) : string
     );
 }
 
+async function setGasPrice(token: Contract, swap: Contract) {
+    const data = swap.interface.encodeFunctionData(
+        "setPrice",
+        [token.address, ethers.BigNumber.from(10).pow(18).mul(1500)]
+    );
+    await run("admin_schedule_and_exec", {target: swap.address, data})
+}
+
 describe("Hexlink Redpacket", function() {
     beforeEach(async function() {
       await deployments.fixture(["HEXL"]);
@@ -54,14 +72,14 @@ describe("Hexlink Redpacket", function() {
     it("erc20 as packet token and eth as gas token with deploy", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
-        const hexlinkToken = await deployments.get("HexlinkToken");
+        const token = await getHexlinkToken();
         const hexlink = await getHexlink();
         const redPacket = await getRedPacket();
         const accountAddr = await hexlink.addressOfName(sender);
 
         const packet = {
             creator: accountAddr,
-            token: hexlinkToken.address,
+            token: token.address,
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
@@ -70,35 +88,26 @@ describe("Hexlink Redpacket", function() {
             sponsorGas: true,
         };
         // deposit some token to tester
-        const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
         await token.connect(deployer).transfer(tester.address, 1000000);
-        await token.connect(tester).approve(accountAddr, packet.balance + 100);
-
-        // build op to transfer packet token from tester to account
-        const op0 = {
-            to: hexlinkToken.address,
-            value: 0,
-            callData: token.interface.encodeFunctionData(
-                "transferFrom", [tester.address, accountAddr, packet.balance + 100]
-            ),
-            callGasLimit: 0 // no limit
-        };
+        await token.connect(tester).transfer(accountAddr, packet.balance);
+        const value = ethers.utils.parseEther("1.0");
 
         // build op to deposit gas sponsorship
-        const accountIface = await iface("AccountSimple");
+        const redPacketIface = await iface("HappyRedPacketImpl");
         const id = genRedPacketId(redPacket.address, accountAddr, packet);
-        const op1 = {
-            to: accountAddr,
-            value: 0,
-            callData: accountIface.encodeFunctionData(
-                "deposit", [id, tester.address, hexlinkToken.address, 100]
+        const deposit = ethers.utils.parseEther("0.5");
+        const op0 = {
+            to: redPacket.address,
+            value: deposit,
+            callData: redPacketIface.encodeFunctionData(
+                "deposit", [id]
             ),
             callGasLimit: 0 // no limit
         };
 
         // build op to approve red packet for packet token
-        const op2 = {
-            to: hexlinkToken.address,
+        const op1 = {
+            to: token.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
                 "approve", [redPacket.address, packet.balance]
@@ -107,8 +116,7 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build op to create red packet
-        const redPacketIface = await iface("HappyRedPacketImpl");
-        const op3 = {
+        const op2 = {
             to: redPacket.address,
             value: 0,
             callData: redPacketIface.encodeFunctionData(
@@ -118,9 +126,10 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build txData for execBatch
+        const accountIface = await iface("AccountSimple");
         const opsData = accountIface.encodeFunctionData(
             "execBatch",
-            [[op0, op1, op2, op3]]
+            [[op0, op1, op2]]
         );
         const initData = accountIface.encodeFunctionData("init", [
             tester.address, opsData
@@ -139,7 +148,6 @@ describe("Hexlink Redpacket", function() {
             [sender, initData, authProof],
         );
 
-        const value = ethers.utils.parseEther("1.0");
         const tx = await hexlink.connect(tester).process([{
             to: accountAddr,
             value,
@@ -157,7 +165,7 @@ describe("Hexlink Redpacket", function() {
 
         expect(
             await ethers.provider.getBalance(accountAddr)
-        ).to.eq(value);
+        ).to.eq(value.sub(deposit));
 
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
@@ -182,9 +190,11 @@ describe("Hexlink Redpacket", function() {
     it("erc20 as packet token and eth as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
-        const hexlinkToken = await deployments.get("HexlinkToken");
+        const hexlinkToken = await getHexlinkToken();
         const hexlink = await getHexlink();
         const redPacket = await getRedPacket();
+        const swap = await getHexlinkSwap();
+        await setGasPrice(hexlinkToken, swap);
         const accountAddr = await hexlink.addressOfName(sender);
 
         // deploy
@@ -214,22 +224,24 @@ describe("Hexlink Redpacket", function() {
         };
         // deposit some token to account str
         const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
-        await token.connect(deployer).transfer(accountAddr, 1000000);
+        await token.connect(deployer).transfer(accountAddr, packet.balance);
         await tester.sendTransaction({to: accountAddr, value: ethers.utils.parseEther("1.0")});
 
         // build op to deposit gas sponsorship
         const id = genRedPacketId(redPacket.address, accountAddr, packet);
-        const op1 = {
-            to: accountAddr,
-            value: 0,
-            callData: accountIface.encodeFunctionData(
-                "deposit", [id, tester.address, ethers.constants.AddressZero, 100 * 10]
+        const redPacketIface = await iface("HappyRedPacketImpl");
+        const deposit = ethers.utils.parseEther("0.5");
+        const op0 = {
+            to: redPacket.address,
+            value: deposit,
+            callData: redPacketIface.encodeFunctionData(
+                "deposit", [id]
             ),
             callGasLimit: 0 // no limit
         };
 
         // build op to approve red packet for packet token
-        const op2 = {
+        const op1 = {
             to: hexlinkToken.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
@@ -239,8 +251,7 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build op to create red packet
-        const redPacketIface = await iface("HappyRedPacketImpl");
-        const op3 = {
+        const op2 = {
             to: redPacket.address,
             value: 0,
             callData: redPacketIface.encodeFunctionData(
@@ -252,24 +263,24 @@ describe("Hexlink Redpacket", function() {
         // build txData for execBatch
         const opsData = accountIface.encodeFunctionData(
             "execBatch",
-            [[op1, op2, op3]]
+            [[op0, op1, op2]]
         );
         const gas = {
-            receiver: tester.address,
+            swapper: swap.address,
             token: ethers.constants.AddressZero,
+            receiver: tester.address,
             baseGas: 0,
-            price: 0,
         };
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
-                [opsData, 0, [gas.receiver, gas.token, gas.baseGas, gas.price]]
+                ["bytes", "uint256", "tuple(address, address, address, uint256)"],
+                [opsData, 0, [gas.swapper, gas.token, gas.receiver, gas.baseGas]]
             )
         );
         const signature = await tester.signMessage(ethers.utils.arrayify(message));
         const nonce = await account.nonce();
         const tx = await account.connect(deployer).validateAndCallWithGasRefund(
-            opsData, nonce, signature, gas
+            opsData, nonce, gas, signature
         );
         const receipt = await tx.wait();
         const event = receipt.events.find((e: any) => e.event === "GasPaid");
@@ -301,9 +312,11 @@ describe("Hexlink Redpacket", function() {
     it("erc20 as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
-        const hexlinkToken = await deployments.get("HexlinkToken");
+        const token = await getHexlinkToken();
         const hexlink = await getHexlink();
         const redPacket = await getRedPacket();
+        const swap = await getHexlinkSwap();
+        await setGasPrice(token, swap);
         const accountAddr = await hexlink.addressOfName(sender);
 
         // deploy
@@ -323,7 +336,7 @@ describe("Hexlink Redpacket", function() {
         // create redpacket
         const packet = {
             creator: accountAddr,
-            token: hexlinkToken.address,
+            token: token.address,
             salt: ethers.constants.HashZero,
             balance: 10000,
             validator: validator.address,
@@ -332,24 +345,41 @@ describe("Hexlink Redpacket", function() {
             sponsorGas: true,
         };
         // deposit some token to account str
-        const token = await ethers.getContractAt("IERC20", hexlinkToken.address);
-        await token.connect(deployer).transfer(accountAddr, "1000000000000000000");
-        await tester.sendTransaction({to: accountAddr, value: ethers.utils.parseEther("1.0")});
+        const amount = ethers.BigNumber.from(10).pow(18).mul(20);
+        const totolTokenCost = amount.add(packet.balance).add(amount /* gas */);
+        await token.connect(deployer).transfer(accountAddr, totolTokenCost);
+        await swap.connect(deployer).deposit({value: ethers.utils.parseEther("1.0")});
 
-        // build op to deposit gas sponsorship
-        const id = genRedPacketId(redPacket.address, accountAddr, packet);
-        const op1 = {
-            to: accountAddr,
+        // build op to swap gas token to eth
+        const op0 = {
+            to: token.address,
             value: 0,
-            callData: accountIface.encodeFunctionData(
-                "deposit", [id, tester.address, ethers.constants.AddressZero, 100 * 10]
+            callData: token.interface.encodeFunctionData(
+                "approve", [swap.address, amount]
+            ),
+            callGasLimit: 0 // no limit
+        };
+        const id = genRedPacketId(redPacket.address, accountAddr, packet);
+        const redPacketIface = await iface("HappyRedPacketImpl");
+        const op1 = {
+            to: swap.address,
+            value: 0,
+            callData: swap.interface.encodeFunctionData(
+                "swapAndCall", [
+                    token.address,
+                    amount,
+                    redPacket.address,
+                    redPacketIface.encodeFunctionData(
+                        "deposit", [id]
+                    )
+                ]
             ),
             callGasLimit: 0 // no limit
         };
 
         // build op to approve red packet for packet token
         const op2 = {
-            to: hexlinkToken.address,
+            to: token.address,
             value: 0,
             callData: token.interface.encodeFunctionData(
                 "approve", [redPacket.address, packet.balance]
@@ -358,7 +388,6 @@ describe("Hexlink Redpacket", function() {
         };
 
         // build op to create red packet
-        const redPacketIface = await iface("HappyRedPacketImpl");
         const op3 = {
             to: redPacket.address,
             value: 0,
@@ -371,31 +400,31 @@ describe("Hexlink Redpacket", function() {
         // build txData for execBatch
         const opsData = accountIface.encodeFunctionData(
             "execBatch",
-            [[op1, op2, op3]]
+            [[op0, op1, op2, op3]]
         );
         const gas = {
+            swapper: swap.address,
             receiver: tester.address,
-            token: hexlinkToken.address,
+            token: token.address,
             baseGas: "0",
-            price: "1000000000000", // 1 hexl = 10^18 = 0.001 ETH = 10^15 wei => 1gwei = 10^9 wei = 10^12 hexl
         };
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
-                ["bytes", "uint256", "tuple(address, address, uint256, uint256)"],
-                [opsData, 0, [gas.receiver, gas.token, gas.baseGas, gas.price]]
+                ["bytes", "uint256", "tuple(address, address, address, uint256)"],
+                [opsData, 0, [gas.swapper, gas.token, gas.receiver, gas.baseGas]]
             )
         );
         const signature = await tester.signMessage(ethers.utils.arrayify(message));
         const nonce = await account.nonce();
         const tx = await account.connect(deployer).validateAndCallWithGasRefund(
-            opsData, nonce, signature, gas
+            opsData, nonce, gas, signature
         );
         const receipt = await tx.wait();
         const event = receipt.events.find((e: any) => e.event === "GasPaid");
         console.log("gas payment = "  + event.args.payment.toString());
         console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
         console.log("real gas cost = "  + receipt.gasUsed.toNumber());
-        console.log("expected payment = "  + receipt.gasUsed.mul(receipt.effectiveGasPrice).mul(1000).toString());
+        console.log("expected payment = "  + receipt.gasUsed.mul(receipt.effectiveGasPrice).toString());
 
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(

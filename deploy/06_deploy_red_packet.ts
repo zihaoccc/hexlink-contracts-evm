@@ -8,7 +8,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
   await deploy("HappyRedPacketImpl", {
     from: deployer,
-    args: [],
     log: true,
     autoMine: true
   });

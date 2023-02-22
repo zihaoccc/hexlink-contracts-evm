@@ -70,7 +70,7 @@ contract HappyRedPacketImpl is Ownable, UUPSUpgradeable, GasSponsor {
         return packets_[id];
     }
 
-    function deposit(bytes32 packetId) external payable {
+    function deposit(bytes32 packetId) external payable {        
         packets_[packetId].gasSponsorship += msg.value;
     }
 

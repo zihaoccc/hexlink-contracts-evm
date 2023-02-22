@@ -4,31 +4,34 @@ pragma solidity ^0.8.8;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import "../utils/ISwap.sol";
 
 contract GasPayer {
-    event GasPaid(address to, uint256 payment);
+    event GasPaid(uint256 payment);
 
     struct GasPayment {
-        address payable receiver;
+        address swapper;
         address token;
+        address receiver;
         uint256 baseGas;
-        uint256 price;
     }
 
     function _refundGas(
         GasPayment calldata gas,
         uint256 gasUsed
     ) internal returns (uint256 payment) {
-        require(gas.receiver != address(0), "HEXLA014");
-        gasUsed = gasUsed + gas.baseGas + 80000; // From 69369 to 76624 
-        if (gas.token == address(0)) {
+        if (gas.token != address(0)) {
+            gasUsed = gasUsed + gas.baseGas + 80000; 
             payment = gasUsed * tx.gasprice;
-            (bool success, ) = gas.receiver.call{value: payment}("");
-            require(success, "HEXL020");
+            uint256 price = ISwap(gas.swapper).priceOf(gas.token);
+            uint256 amountIn = payment * price / 1000000000000000000 + 1;
+            IERC20(gas.token).approve(gas.swapper, amountIn);
+            ISwap(gas.swapper).swapExactOutputAndCall(gas.token, payment, gas.receiver, "");
         } else {
-            payment = gasUsed * tx.gasprice * gas.price / 1000000000;
-            IERC20(gas.token).transfer(gas.receiver, payment);
+            gasUsed = gasUsed + gas.baseGas + 50000; // From 69369 to 76624 
+            payment = gasUsed * tx.gasprice;
+            Address.sendValue(payable(gas.receiver), payment);
         }
-        emit GasPaid(gas.receiver, payment);
+        emit GasPaid(payment);
     }
 }
