@@ -21,8 +21,11 @@ The design could be found at:
 # compile contracts
 npx hardhat compile
 
-# run tests
+# clean cache
 npx hardhat clean
+
+# run tests
+npx hardhat test
 
 # get metadata of deployed contracts
 npx hardhat metadata
@@ -37,7 +40,7 @@ doppler run -- npx hardhat deploy --network goerli
 # Etherscan verification
 
 ```shell
-ndoppler run -- npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS $CONSTRUCTOR_PARAMS
+doppler run -- npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS $CONSTRUCTOR_PARAMS
 ```
 
 # Error Code Map
