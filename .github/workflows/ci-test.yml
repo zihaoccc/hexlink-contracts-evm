@@ -1,0 +1,50 @@
+name: ci-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.6.0
+      - uses: actions/checkout@v3
+      - name: Install yarn
+        run: npm install --global yarn
+      - name: Install hardhat
+        run: yarn add --dev hardhat
+      - name: Install typescript
+        run: npm install --save-dev typescript --force
+      - name: Build
+        run: npx hardhat compile
+      - name: Clean cache
+        run: npx hardhat clean
+      - name: Run tests
+        run: npx hardhat test
+      - name: Early terminate workflow
+        if: ${{ failure() }}
+        uses: ./.github/actions/early-terminator
+        
+  success:
+    name: ci-test-success
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    #always run this job even if needed jobs failed or are skipped.
+    if: ${{ always() }}
+    needs:
+      - build
+    steps:
+      - run: |
+          echo build: ${{ needs.build.result }}
+          echo deploy_local: ${{ needs.deploy_local.result }}
+          success="${{
+            needs.build.result=='success'
+            && needs.deploy_local.result=='success'
+          }}"
+          if [[ "$success" != "true" ]]; then
+            exit 1;
+          fi
