@@ -53,13 +53,19 @@ contract HexlinkErc721Impl is
         _validateCount();
         _safeMint(recipient, tokenId);
         if (gasSponsorship > 0 && refundReceiver != address(0)) {
-            uint256 payment = (gasUsed - gasleft() + 55000) * tx.gasprice;
+            uint256 payment = (gasUsed - gasleft() + 60000) * tx.gasprice;
             gasSponsorship -= payment;
             _sponsorGas(payment, refundReceiver);
         }
     }
 
-    function depositGasSponsorship() external payable {
+    function withdraw(uint256 amount) external onlyOwner {
+        require(gasSponsorship >= amount, "insufficient balance");
+        gasSponsorship -= amount;
+        Address.sendValue(payable(msg.sender), amount);
+    }
+
+    function deposit() external payable {
         gasSponsorship += msg.value;
     }
 

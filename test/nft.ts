@@ -42,7 +42,7 @@ describe("Hexlink Redpacket", function() {
         expect(await contract.owner()).to.eq(deployer.address);
         expect(await contract.validator()).to.eq(deployer.address);
 
-        await contract.connect(deployer).depositGasSponsorship(
+        await contract.connect(deployer).deposit(
             {value: ethers.utils.parseEther("0.5")}
         );
         // mint
@@ -117,7 +117,7 @@ describe("Hexlink Redpacket", function() {
         expect(await contract.maxSupply()).to.eq(1000);
         expect(await contract.owner()).to.eq(deployer.address);
         expect(await contract.validator()).to.eq(deployer.address);
-        await contract.connect(deployer).depositGasSponsorship(
+        await contract.connect(deployer).deposit(
             {value: ethers.utils.parseEther("0.5")}
         );
 

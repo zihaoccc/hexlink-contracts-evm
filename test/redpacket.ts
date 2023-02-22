@@ -292,7 +292,7 @@ describe("Hexlink Redpacket", function() {
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
 
-    it.only("erc20 as gas token", async function() {
+    it("erc20 as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
         const hexlink = await getHexlink();

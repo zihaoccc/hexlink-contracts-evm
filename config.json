@@ -33,6 +33,11 @@
                 "address": "0x11fe4b6ae13d2a6055c8d9cf65c55bac32b5d844",
                 "decimals": 18,
                 "price": "1500000000000000000000"
+            },
+            {
+                "address": "0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6",
+                "decimals": 18,
+                "price": "1000000000000000000"
             }
         ]
     },
@@ -54,6 +59,11 @@
                 "address": "0xE097d6B3100777DC31B34dC2c58fB524C2e76921",
                 "decimals": 6,
                 "price": "1500000000"
+            },
+            {
+                "address": "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889",
+                "decimals": 18,
+                "price": "1000000000000000000"
             }
         ]
     },

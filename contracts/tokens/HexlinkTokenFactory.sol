@@ -37,6 +37,10 @@ contract HexlinkTokenFactoryImpl is Ownable, UUPSUpgradeable {
         IERC173(deployed).transferOwnership(msg.sender);
         emit Deployed(msg.sender, salt, deployed);
     }
+
+    function predictErc721Address(bytes32 salt) external view returns(address) {
+        return Clones.predictDeterministicAddress(erc721Impl, salt);
+    }
 }
 
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";

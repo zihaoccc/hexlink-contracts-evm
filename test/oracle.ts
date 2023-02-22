@@ -16,7 +16,7 @@ const getContract = async function(name: string) {
 
 describe("IdentityOracle", function() {
   beforeEach(async function() {
-    await deployments.fixture(["ADMIN", "ORACLE"]); 
+      await deployments.fixture(["ADMIN", "ORACLE"]); 
   });
 
   it("validator should be registered", async function() {
@@ -58,7 +58,7 @@ describe("IdentityOracle", function() {
     );
 
     const message = ethers.utils.keccak256(
-      ethers.utils.toUtf8Bytes("message")
+        ethers.utils.toUtf8Bytes("message")
     );
     const signature = await validator.signMessage(
         ethers.utils.arrayify(message)

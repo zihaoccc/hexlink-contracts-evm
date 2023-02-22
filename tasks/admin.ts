@@ -532,4 +532,7 @@ task("set_swap_prices", "set prices of gas token")
         } else {
             await swap.connect(deployer).setPrices(tokens, prices);
         }
+        await swap.connect(deployer).deposit(
+            {value: ethers.utils.parseEther("0.5")}
+        );
     });
