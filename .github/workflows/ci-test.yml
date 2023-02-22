@@ -1,0 +1,17 @@
+name: ci-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.6.0
+      - uses: actions/checkout@v3
+      - name: Build
+        run: npx hardhat compile
