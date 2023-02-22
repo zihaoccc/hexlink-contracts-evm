@@ -53,7 +53,7 @@ contract HexlinkErc721Impl is
         _validateCount();
         _safeMint(recipient, tokenId);
         if (gasSponsorship > 0 && refundReceiver != address(0)) {
-            uint256 payment = (gasUsed + 80000) * tx.gasprice;
+            uint256 payment = (gasUsed - gasleft() + 55000) * tx.gasprice;
             gasSponsorship -= payment;
             _sponsorGas(payment, refundReceiver);
         }

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run, network } from "hardhat";
 import { Contract } from "ethers";
+import { getHexlinkSwap, getHexlinkToken, setGasPrice } from "./swap";
 
 const namehash = function(name: string) : string {
     return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -21,16 +22,6 @@ async function getHexlink() : Promise<Contract> {
 async function getRedPacket() : Promise<Contract> {
     const deployment = await deployments.get("HappyRedPacket");
     return await ethers.getContractAt("HappyRedPacketImpl", deployment.address);
-}
-
-async function getHexlinkSwap() : Promise<Contract> {
-    const deployment = await deployments.get("HexlinkSwapProxy");
-    return await ethers.getContractAt("HexlinkSwapImpl", deployment.address);
-}
-
-async function getHexlinkToken() : Promise<Contract> {
-    const deployment = await deployments.get("HexlinkToken");
-    return await ethers.getContractAt("HexlinkToken", deployment.address);
 }
 
 function genRedPacketId(contract: string, creator: string, packet: any) : string {
@@ -54,14 +45,6 @@ function genRedPacketId(contract: string, creator: string, packet: any) : string
             ]
         )
     );
-}
-
-async function setGasPrice(token: Contract, swap: Contract) {
-    const data = swap.interface.encodeFunctionData(
-        "setPrice",
-        [token.address, ethers.BigNumber.from(10).pow(18).mul(1500)]
-    );
-    await run("admin_schedule_and_exec", {target: swap.address, data})
 }
 
 describe("Hexlink Redpacket", function() {
@@ -309,15 +292,17 @@ describe("Hexlink Redpacket", function() {
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
     });
 
-    it("erc20 as gas token", async function() {
+    it.only("erc20 as gas token", async function() {
         const { deployer, validator, tester } = await ethers.getNamedSigners();
 
-        const token = await getHexlinkToken();
         const hexlink = await getHexlink();
+        const accountAddr = await hexlink.addressOfName(sender);
+        const token = await getHexlinkToken();
         const redPacket = await getRedPacket();
+    
         const swap = await getHexlinkSwap();
         await setGasPrice(token, swap);
-        const accountAddr = await hexlink.addressOfName(sender);
+        await swap.connect(deployer).deposit({value: ethers.utils.parseEther("1.0")});
 
         // deploy
         const accountIface = await iface("AccountSimple");
@@ -348,7 +333,6 @@ describe("Hexlink Redpacket", function() {
         const amount = ethers.BigNumber.from(10).pow(18).mul(20);
         const totolTokenCost = amount.add(packet.balance).add(amount /* gas */);
         await token.connect(deployer).transfer(accountAddr, totolTokenCost);
-        await swap.connect(deployer).deposit({value: ethers.utils.parseEther("1.0")});
 
         // build op to swap gas token to eth
         const op0 = {
@@ -425,25 +409,46 @@ describe("Hexlink Redpacket", function() {
         console.log("real gas price = "  + receipt.effectiveGasPrice.toNumber());
         console.log("real gas cost = "  + receipt.gasUsed.toNumber());
         console.log("expected payment = "  + receipt.gasUsed.mul(receipt.effectiveGasPrice).toString());
+        const state = await redPacket.getPacket(id);
+        expect(state.balance).to.eq(packet.balance);
+        expect(state.split).to.eq(packet.split);
 
+        const swapEvent = receipt.logs.filter(
+            (log: any) => log.address === swap.address
+        ).map((log: any) => swap.interface.parseLog(log)).find(
+            (e: any) => e.name === "Swap"
+        );
+        expect(swapEvent.args.from).to.eq(accountAddr);
+        expect(swapEvent.args.token).to.eq(token.address);
+        expect(swapEvent.args.amountIn).to.eq(amount);
+        expect(swapEvent.args.amountOut).to.eq(state.gasSponsorship);
+        console.log(state.gasSponsorship.toString());
+
+        // claim
         const hash = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
                 ["bytes32", "address", "address"],
-                [id, tester.address, ethers.constants.AddressZero]
+                [id, deployer.address, tester.address]
             )
         );
         const sig = await validator.signMessage(
             ethers.utils.arrayify(hash)
         );
-
         expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(0);
         const tx2 = await redPacket.connect(deployer).claim(
             packet,
+            deployer.address,
             tester.address,
-            ethers.constants.AddressZero,
             sig
         );
-        await tx2.wait();
-        expect(await redPacket.getClaimedCount(id, tester.address)).to.eq(1);
+        const receipt2 = await tx2.wait();
+        const e2 = receipt2.events.find((e: any) => e.event === "GasSponsorship");
+        expect(e2.args.receiver).to.eq(gas.receiver);
+        expect(await ethers.provider.getBalance(tester.address), e2.args.payment);
+        console.log("real gas price = "  + receipt2.effectiveGasPrice.toNumber());
+        console.log("real gas cost = "  + receipt2.gasUsed.toNumber());
+        console.log("real gas cost is " + receipt2.gasUsed.mul(receipt2.effectiveGasPrice).toString());
+        console.log("gas sponsorship is " + e2.args.payment.toString());
+        expect(await redPacket.getClaimedCount(id, deployer.address)).to.eq(1);
     });
 });

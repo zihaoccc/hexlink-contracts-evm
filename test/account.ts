@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run } from "hardhat";
-import { Contract, BigNumber } from "ethers";
+import { Contract } from "ethers";
+import { getHexlinkSwap, setGasPrice } from "./swap";
 
 const namehash = function(name: string) : string {
   return ethers.utils.keccak256(ethers.utils.toUtf8Bytes(name));
@@ -45,19 +46,6 @@ const deployAccount = async function(
     "AccountSimple",
     accountAddr
   );
-}
-
-async function getHexlinkSwap() : Promise<Contract> {
-  const deployment = await deployments.get("HexlinkSwapProxy");
-  return await ethers.getContractAt("HexlinkSwapImpl", deployment.address);
-}
-
-async function setGasPrice(token: Contract, swap: Contract) {
-  const data = swap.interface.encodeFunctionData(
-      "setPrice",
-      [token.address, ethers.BigNumber.from(10).pow(18).mul(1500)]
-  );
-  await run("admin_schedule_and_exec", {target: swap.address, data})
 }
 
 describe("Hexlink Account", function() {

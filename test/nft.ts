@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ethers, deployments, artifacts, run, network } from "hardhat";
+import { getHexlinkSwap, getHexlinkToken, setGasPrice } from "./swap";
 
 async function iface(contract: string) {
     const artifact = await artifacts.readArtifact(contract);
@@ -12,7 +13,7 @@ describe("Hexlink Redpacket", function() {
     });
 
     it("deploy erc721", async function() {
-        const { deployer, validator } = await ethers.getNamedSigners();
+        const { deployer, validator, tester } = await ethers.getNamedSigners();
 
         const tokenFactory = await run("token_factory", {});
         const erc721Iface = await iface("HexlinkErc721Impl");
@@ -41,6 +42,9 @@ describe("Hexlink Redpacket", function() {
         expect(await contract.owner()).to.eq(deployer.address);
         expect(await contract.validator()).to.eq(deployer.address);
 
+        await contract.connect(deployer).depositGasSponsorship(
+            {value: ethers.utils.parseEther("0.5")}
+        );
         // mint
         const message = ethers.utils.keccak256(
             ethers.utils.defaultAbiCoder.encode(
@@ -49,7 +53,7 @@ describe("Hexlink Redpacket", function() {
                     network.config.chainId,
                     deloyed,
                     deployer.address,
-                    ethers.constants.AddressZero
+                    tester.address
                 ]
             )
         );
@@ -59,7 +63,7 @@ describe("Hexlink Redpacket", function() {
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
-            deployer.address, ethers.constants.AddressZero, signature
+            deployer.address, tester.address, signature
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(1);
         console.log(tx2);
@@ -67,7 +71,7 @@ describe("Hexlink Redpacket", function() {
         await expect(
             contract.connect(deployer).mint(
                 deployer.address,
-                ethers.constants.AddressZero,
+                tester.address,
                 signature
             )
         ).to.be.revertedWith("Already minted");
@@ -80,7 +84,12 @@ describe("Hexlink Redpacket", function() {
     });
 
     it("deploy soul bound erc721", async function() {
-        const { deployer, validator } = await ethers.getNamedSigners();
+        const { deployer, validator, tester } = await ethers.getNamedSigners();
+
+        const swap = await getHexlinkSwap();
+        const token = await getHexlinkToken();
+        await setGasPrice(token, swap);
+        await swap.connect(deployer).deposit({value: ethers.utils.parseEther("1.0")});
 
         const tokenFactory = await run("token_factory", {});
         const erc721Iface = await iface("HexlinkErc721Impl");
@@ -108,6 +117,9 @@ describe("Hexlink Redpacket", function() {
         expect(await contract.maxSupply()).to.eq(1000);
         expect(await contract.owner()).to.eq(deployer.address);
         expect(await contract.validator()).to.eq(deployer.address);
+        await contract.connect(deployer).depositGasSponsorship(
+            {value: ethers.utils.parseEther("0.5")}
+        );
 
         // mint
         const message = ethers.utils.keccak256(
@@ -117,7 +129,7 @@ describe("Hexlink Redpacket", function() {
                     network.config.chainId,
                     deloyed,
                     deployer.address,
-                    ethers.constants.AddressZero
+                    tester.address
                 ]
             )
         );
@@ -127,19 +139,26 @@ describe("Hexlink Redpacket", function() {
         );
         expect(await contract.getMintedCount(deployer.address)).to.eq(0);
         const tx2 = await contract.connect(deployer).mint(
-            deployer.address, ethers.constants.AddressZero, signature
+            deployer.address, tester.address, signature
         );
-        console.log(tx2);
+
+        const receipt2 = await tx2.wait();
+        const e2 = receipt2.events.find((e: any) => e.event === "GasSponsorship");
+        expect(e2.args.receiver).to.eq(tester.address);
+        expect(await ethers.provider.getBalance(tester.address), e2.args.payment);
+        console.log("real gas price = "  + receipt2.effectiveGasPrice.toNumber());
+        console.log("real gas cost = "  + receipt2.gasUsed.toNumber());
+        console.log("real gas cost is " + receipt2.gasUsed.mul(receipt2.effectiveGasPrice).toString());
+        console.log("gas sponsorship is " + e2.args.payment.toString());
         expect(await contract.getMintedCount(deployer.address)).to.eq(1);
 
         await expect(
             contract.connect(deployer).mint(
                 deployer.address,
-                ethers.constants.AddressZero,
+                tester.address,
                 signature
             )
         ).to.be.revertedWith("Already minted");
-
         await expect(
             contract.connect(deployer)[
                 "safeTransferFrom(address,address,uint256)"
