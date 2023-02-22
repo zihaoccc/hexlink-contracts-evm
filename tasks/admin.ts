@@ -504,8 +504,7 @@ task("upgrade_swap", "upgrade swap implementation")
     });
 
 task("set_swap_prices", "set prices of gas token")
-    .addFlag("nowait")
-    .setAction(async (args, hre : HardhatRuntimeEnvironment) => {
+    .setAction(async (_args, hre : HardhatRuntimeEnvironment) => {
         const deployment = await hre.deployments.get("HexlinkSwapProxy");
         const swap = await hre.ethers.getContractAt(
             "HexlinkSwapImpl", deployment.address
@@ -519,13 +518,18 @@ task("set_swap_prices", "set prices of gas token")
         const prices = gasTokens.map((t : any) => t.price);
         console.log(tokens);
         console.log(prices);
-        const data = swap.interface.encodeFunctionData(
-            "setPrices",
-            [tokens, prices]
-        );
-        if (args.nowait) {
-            await hre.run("admin_schedule_or_exec", { target: swap.address, data });
+        const { deployer } = await hre.ethers.getNamedSigners();
+        if (netConf(hre)["safe"]) {
+            const data = swap.interface.encodeFunctionData(
+                "setPrices",
+                [tokens, prices]
+            );
+            await proposeOrExectueSafeTx(hre, deployer, {
+                to: swap.address,
+                value: "0",
+                data
+            });
         } else {
-            await hre.run("admin_schedule_and_exec", { target: swap.address, data });
+            await swap.connect(deployer).setPrices(tokens, prices);
         }
     });
